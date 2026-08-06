@@ -1,0 +1,200 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  styles.yaml — how captions look.
+#
+#  clips.json names a style ("pill-karaoke") and nothing else. Every font path,
+#  colour, and pixel decision lives here, so restyling a whole job is an edit to
+#  this file and not a change to the edit list.
+#
+#  Field names and units are the ones in makeshorts/render/captions/style.py,
+#  which owns the CaptionStyle model. Two things about the units, because both
+#  are easy to get wrong:
+#
+#    *_pct values are FRACTIONS, not percentages. 0.042, not 4.2.
+#    They are fractions of the OUTPUT HEIGHT, except pill_padding_x_pct and
+#    safe_area.left_pct / right_pct, which are fractions of the output WIDTH.
+#
+#  Sizing against the frame rather than in points is what lets one style serve
+#  a 1080x1920 delivery render and a 720x1280 preview and look identical.
+#
+#  Colours are "#RGB", "#RRGGBB", or "#RRGGBBAA". Alpha is part of the colour
+#  rather than a separate opacity knob, so "#00000000" is how you switch a fill
+#  off. Quote them — an unquoted # starts a YAML comment.
+#
+#  Every field is optional. A style named here inherits from the built-in of the
+#  same name in style.py and overrides field by field, so a style entry may be
+#  as short as the one thing you want different. Everything is spelled out below
+#  anyway, because this file is also the documentation of what can be tuned.
+#
+#  Per-job overrides: jobs/<slug>/config/styles.yaml, merged over this file.
+#
+#  Fonts on this machine. Absolute paths deliberately: a caption that silently
+#  falls back to a substitute font is worse than one that fails loudly.
+#    /System/Library/Fonts/Supplemental/Arial Bold.ttf   workhorse, legible small
+#    /System/Library/Fonts/Supplemental/Impact.ttf       condensed, very loud
+#    /System/Library/Fonts/SFNS.ttf                      system UI, quiet
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Used when neither the clip nor render.yaml names a style.
+default: pill-karaoke
+
+styles:
+
+  # ── The house style. Word-by-word highlight over a translucent dark slab. ──
+  #
+  # This is the format that survives a muted phone screen in a feed: the slab
+  # guarantees contrast over any video behind it, and the moving highlight gives
+  # the eye something to track, so the text gets read rather than skimmed.
+  pill-karaoke:
+    font_file: /System/Library/Fonts/Supplemental/Arial Bold.ttf
+    # libass resolves fonts by family name, not path, so a style carries both.
+    # Only the Pillow backend is usable on this machine, but the ASS path must
+    # not silently render in the wrong face if a libass build shows up.
+    font_family: Arial Bold
+    # 0.042 x 1920 ≈ 81px. Big enough to read at thumbnail size; small enough
+    # that two lines of 26 characters still clear the safe area.
+    font_size_pct: 0.042
+    line_spacing_pct: 0.012
+    uppercase: false
+    align: center
+
+    fill: "#FFFFFF"
+    stroke: "#000000"
+    # Thin on purpose. The slab is already doing the contrast work, and a heavy
+    # outline on top of it just muddies the letterforms.
+    stroke_width_pct: 0.0030
+    shadow_color: "#00000099"
+    shadow_offset_pct: 0.0022
+
+    karaoke: true
+    # Amber on white reads as "this word, now" without a second shape to draw.
+    highlight_fill: "#FFD400"
+    # Fully transparent: no chip behind the active word in this style.
+    highlight_pill: "#00000000"
+
+    # 70% black. Opaque enough to guarantee contrast, transparent enough that
+    # the speaker's face stays visible behind a lower-third caption.
+    pill_color: "#000000B3"
+    pill_radius_pct: 0.014
+    pill_padding_x_pct: 0.022
+    pill_padding_y_pct: 0.010
+
+    max_chars_per_line: 26
+    max_lines: 2
+
+    safe_area:
+      top_pct: 0.08
+      # Deeper than the top, and the load-bearing one: this is where every
+      # platform stacks its own caption text, handle, and follow button.
+      bottom_pct: 0.14
+      left_pct: 0.06
+      right_pct: 0.06
+
+  # ── Same mechanics, no slab. For clips whose frame is already dark. ──
+  #
+  # Lets more of the video through and reads as less produced. Costs you the
+  # contrast guarantee, so check the source before choosing it — over a white
+  # slide this style depends entirely on the stroke.
+  clean-bold:
+    font_file: /System/Library/Fonts/Supplemental/Arial Bold.ttf
+    font_family: Arial Bold
+    font_size_pct: 0.038
+    line_spacing_pct: 0.012
+    uppercase: false
+    align: center
+
+    fill: "#FFFFFF"
+    stroke: "#000000"
+    # Without a slab the stroke and shadow carry the whole contrast load, so
+    # both are roughly 50% heavier than in pill-karaoke.
+    stroke_width_pct: 0.0045
+    shadow_color: "#000000B3"
+    shadow_offset_pct: 0.0030
+
+    karaoke: true
+    # Cool highlight rather than amber: against an unlit background a warm
+    # colour reads as a rendering artefact.
+    highlight_fill: "#7DD3FC"
+    highlight_pill: "#00000000"
+
+    pill_color: "#00000000"
+    pill_radius_pct: 0.0
+    pill_padding_x_pct: 0.012
+    pill_padding_y_pct: 0.006
+
+    max_chars_per_line: 24
+    max_lines: 2
+
+    safe_area: {top_pct: 0.08, bottom_pct: 0.14, left_pct: 0.06, right_pct: 0.06}
+
+  # ── Loud. Impact, uppercase, one short line at a time. ──
+  #
+  # The meme-caption register. It buys attention and spends authority, so it
+  # suits a punchy standalone claim and not a careful explanation.
+  impact-punch:
+    font_file: /System/Library/Fonts/Supplemental/Impact.ttf
+    font_family: Impact
+    font_size_pct: 0.052
+    line_spacing_pct: 0.014
+    uppercase: true
+    align: center
+
+    fill: "#FFFFFF"
+    stroke: "#000000"
+    stroke_width_pct: 0.0060
+    shadow_color: "#000000CC"
+    shadow_offset_pct: 0.0030
+
+    karaoke: true
+    highlight_fill: "#22D3EE"
+    # This style puts the chip behind the active word instead of a slab behind
+    # the line — the highlight is the whole visual event.
+    highlight_pill: "#000000CC"
+
+    pill_color: "#00000000"
+    pill_radius_pct: 0.006
+    pill_padding_x_pct: 0.014
+    pill_padding_y_pct: 0.008
+
+    # Impact is condensed and uppercase is wide; those roughly cancel. One line
+    # at a time is the point of the style, not a consequence of the metrics.
+    max_chars_per_line: 18
+    max_lines: 1
+
+    safe_area: {top_pct: 0.10, bottom_pct: 0.16, left_pct: 0.05, right_pct: 0.05}
+
+  # ── Quiet. Whole cue at once, no word highlighting. ──
+  #
+  # For a clip carrying dense or technical content, where captions are an
+  # accessibility affordance rather than a hook and a moving highlight would
+  # compete with what is being said.
+  static-block:
+    font_file: /System/Library/Fonts/Supplemental/Arial Bold.ttf
+    font_family: Arial Bold
+    font_size_pct: 0.036
+    line_spacing_pct: 0.011
+    uppercase: false
+    align: center
+
+    fill: "#F2F2F2"
+    stroke: "#000000"
+    stroke_width_pct: 0.0022
+    shadow_color: "#00000099"
+    shadow_offset_pct: 0.0020
+
+    # No karaoke: the cue appears and holds. highlight_* are unused but kept
+    # equal to fill so nothing changes if someone flips karaoke back on.
+    karaoke: false
+    highlight_fill: "#F2F2F2"
+    highlight_pill: "#00000000"
+
+    # Denser than pill-karaoke's slab — three lines of small text need more
+    # help separating from the video than two lines of large text do.
+    pill_color: "#000000CC"
+    pill_radius_pct: 0.010
+    pill_padding_x_pct: 0.020
+    pill_padding_y_pct: 0.009
+
+    max_chars_per_line: 30
+    max_lines: 3
+
+    safe_area: {top_pct: 0.08, bottom_pct: 0.12, left_pct: 0.07, right_pct: 0.07}

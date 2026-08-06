@@ -1,0 +1,30 @@
+{
+  "grid": "8x6",
+  "frames_sampled": 240,
+  "regions": [
+    {
+      "id": "cam_a",
+      "kind": "speaker",
+      "rect": [0.0, 0.0, 0.5, 1.0],
+      "label": "Dana Reyes",
+      "motion": 0.72,
+      "confidence": 0.91
+    },
+    {
+      "id": "cam_b",
+      "kind": "speaker",
+      "rect": [0.5, 0.5, 0.5, 0.5],
+      "label": "Ilan Petrov",
+      "motion": 0.64,
+      "confidence": 0.58
+    },
+    {
+      "id": "slides",
+      "kind": "slide",
+      "rect": [0.5, 0.0, 0.5, 0.5],
+      "motion": 0.03,
+      "change_points": [412.5, 780.25, 1301.0],
+      "confidence": 0.74
+    }
+  ]
+}

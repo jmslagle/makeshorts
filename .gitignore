@@ -1,0 +1,35 @@
+# Source recordings. Large, and not ours to publish.
+videos/
+*.mp4
+*.m4a
+*.mov
+*.mkv
+
+# Job directories: everything about a specific recording.
+#
+# Excluded deliberately and not just for size. A job holds words.json and
+# transcript.txt -- a verbatim transcript of whatever was recorded. For a real
+# webinar that routinely means named employees, named clients, and in this
+# project's first real run, a described security weakness in a named third
+# party. clips.json quotes the transcript too. None of that is publishable by
+# default, so the whole directory stays out and anything shareable has to be
+# copied out deliberately.
+jobs/
+
+# Brand assets pulled from the web; not ours to redistribute.
+assets/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Test artifacts
+tests/render/_samples/*.png
+
+# macOS
+.DS_Store

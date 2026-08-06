@@ -1,0 +1,240 @@
+{
+  "schema_version": "1.0",
+  "job": "acme-q3-webinar",
+  "source": {
+    "path": "jobs/acme-q3-webinar/source.mp4",
+    "duration": 298.92,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "regions": [
+      {
+        "id": "cam_a",
+        "kind": "speaker",
+        "label": "Dana Reyes",
+        "rect": [
+          0.0,
+          0.0,
+          0.5,
+          1.0
+        ]
+      },
+      {
+        "id": "slides",
+        "kind": "slide",
+        "rect": [
+          0.5,
+          0.0,
+          0.5,
+          1.0
+        ]
+      }
+    ]
+  },
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "criteria_ref": {
+    "file": "config/criteria.yaml",
+    "version": "2026-08-06",
+    "sha256": "fb46e9d71e7d79a022d94addb67e57b8498b62aa6d6a8011f3fab05af352e05e"
+  },
+  "clips": [
+    {
+      "id": "01-cac-payback-math",
+      "title": "The CAC payback number nobody checks",
+      "start": 113.59,
+      "end": 148.39,
+      "source_text": "Eighteen months. That is the number that kills companies, and almost nobody checks it. If your CAC payback runs past eighteen months, you are financing growth out of a hole you cannot see. We looked at four hundred deals last year, and the pattern held every single time. The ones that died had a payback of twenty two months and a churn rate of four percent. Eighteen months is where companies die.",
+      "why": {
+        "one_line": "Contrarian claim on a hard number, resolves inside the clip, opens cold.",
+        "theme": "unit-economics",
+        "scores": {
+          "hook_strength": {
+            "score": 5,
+            "evidence": "First two seconds are a bare number plus a stake."
+          },
+          "standalone": {
+            "score": 5,
+            "evidence": "Defines CAC payback inline; no back-references."
+          },
+          "single_idea": {
+            "score": 4,
+            "evidence": "One claim, one worked example."
+          },
+          "payoff": {
+            "score": 5,
+            "evidence": "Closes on the corrective rule it opened with."
+          },
+          "specificity": {
+            "score": 5,
+            "evidence": "Eighteen months, four hundred deals, twenty two months, four percent."
+          },
+          "quotability": {
+            "score": 4,
+            "evidence": "'Eighteen months is where companies die.'"
+          },
+          "housekeeping": {
+            "score": 5,
+            "evidence": "No logistics, no chat wrangling."
+          }
+        },
+        "weighted_score": 4.79,
+        "rejected_alternatives": []
+      },
+      "visual_dependency": false,
+      "speaker": "cam_a",
+      "layout": {
+        "mode": "focus",
+        "region": "cam_a",
+        "fit": "cover"
+      },
+      "captions": {
+        "style": "pill-karaoke",
+        "position": "lower_third"
+      },
+      "audio": {
+        "normalize": true
+      }
+    },
+    {
+      "id": "02-first-sales-hire",
+      "title": "Do not hire a head of sales yet",
+      "start": 174.04,
+      "end": 204.59,
+      "source_text": "Do not hire a head of sales before you can sell the thing yourself. I have watched eleven companies make that exact mistake in three years. You cannot debug a sales process you have never run, and a new VP cannot either. The number I use is thirty closed deals by a founder before the first sales hire. Thirty is not a magic number, it is just long enough to stop guessing.",
+      "why": {
+        "one_line": "Direct instruction, a count, and a threshold a founder can act on today.",
+        "theme": "hiring",
+        "scores": {
+          "hook_strength": {
+            "score": 5,
+            "evidence": "Opens on the imperative: 'Do not hire a head of sales'."
+          },
+          "standalone": {
+            "score": 4,
+            "evidence": "One soft reference to 'that exact mistake', resolved immediately."
+          },
+          "single_idea": {
+            "score": 5,
+            "evidence": "One rule, developed and closed."
+          },
+          "payoff": {
+            "score": 4,
+            "evidence": "Delivers the thirty-deal threshold."
+          },
+          "specificity": {
+            "score": 5,
+            "evidence": "Eleven companies, three years, thirty deals."
+          },
+          "quotability": {
+            "score": 4,
+            "evidence": "'You cannot debug a sales process you have never run.'"
+          },
+          "housekeeping": {
+            "score": 5,
+            "evidence": "No poll talk, no crosstalk."
+          }
+        },
+        "weighted_score": 4.57,
+        "rejected_alternatives": []
+      },
+      "visual_dependency": true,
+      "speaker": "cam_a",
+      "layout": [
+        {
+          "at": 0.0,
+          "mode": "focus",
+          "region": "cam_a",
+          "fit": "cover"
+        },
+        {
+          "at": 8.0,
+          "mode": "hero_inset",
+          "hero": "slides",
+          "inset": "cam_a",
+          "inset_corner": "bottom_right",
+          "inset_scale": 0.28
+        }
+      ],
+      "captions": {
+        "style": "pill-karaoke",
+        "position": "lower_third"
+      },
+      "audio": {
+        "normalize": true
+      }
+    },
+    {
+      "id": "03-churn-is-pricing",
+      "title": "Churn is a pricing problem",
+      "start": 227.58,
+      "end": 256.98,
+      "source_text": "Churn is a pricing problem wearing a product costume. When customers leave in month four, they did not hate the software, they hated the bill. Move one dollar of that price into onboarding and watch what happens to retention. We did exactly that in two thousand twenty four and cut logo churn by a third. That is the whole trick, and it costs almost nothing to try.",
+      "why": {
+        "one_line": "Reframing plus a cheap experiment with a real result attached.",
+        "theme": "unit-economics",
+        "scores": {
+          "hook_strength": {
+            "score": 4,
+            "evidence": "'Wearing a product costume' lands, but it is a metaphor first."
+          },
+          "standalone": {
+            "score": 4,
+            "evidence": "Self-contained; the churn question it answers is not needed."
+          },
+          "single_idea": {
+            "score": 4,
+            "evidence": "One reframing, one experiment."
+          },
+          "payoff": {
+            "score": 4,
+            "evidence": "Ends on the result and the cost of trying."
+          },
+          "specificity": {
+            "score": 4,
+            "evidence": "Month four, one dollar, two thousand twenty four, a third."
+          },
+          "quotability": {
+            "score": 3,
+            "evidence": "The opening line needs its follow-up to make sense."
+          },
+          "housekeeping": {
+            "score": 5,
+            "evidence": "The poll aside stays outside the clip."
+          }
+        },
+        "weighted_score": 4.0,
+        "rejected_alternatives": []
+      },
+      "visual_dependency": false,
+      "speaker": "cam_a",
+      "layout": [
+        {
+          "at": 0.0,
+          "mode": "focus",
+          "region": "frame",
+          "fit": "contain_blur"
+        },
+        {
+          "at": 10.0,
+          "mode": "stack",
+          "regions": [
+            "cam_a",
+            "slides"
+          ]
+        }
+      ],
+      "captions": {
+        "style": "pill-karaoke",
+        "position": "lower_third"
+      },
+      "audio": {
+        "normalize": true
+      }
+    }
+  ]
+}

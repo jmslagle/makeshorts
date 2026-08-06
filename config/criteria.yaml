@@ -1,0 +1,187 @@
+# criteria.yaml — the definition of "compelling".
+#
+# This file is the tunable surface of the whole project. It is DATA, not
+# documentation: PROMPT.md is generated from it, the score keys `ms lint`
+# demands are read from it, and the thresholds it enforces come from here.
+# There is no rubric text inside any Python string. Edit this file, re-run
+# `ms plan`, and both the prompt and the gate change together.
+#
+# Two kinds of rule live here, and the difference matters:
+#
+#   gates/   — mechanical. Checked against words.json and silence.json.
+#              The model never adjudicates these; arguing with them is not an
+#              option, and `ms lint` fails hard on a violation.
+#   rubric/  — editorial. The model scores each clip 1-5 against each
+#              criterion and must cite evidence. Lint checks that every
+#              criterion was scored, that the arithmetic is honest, and that
+#              the result clears the thresholds — it does not second-guess a
+#              score itself. Disagreeing with a score means editing
+#              clips.json by hand, which is the intended workflow.
+
+version: "2026-08-06"
+
+# ── Gates: mechanically enforced by `ms lint`. ──────────────────────────────
+gates:
+  # Seconds. `target` is advice to the model; `min`/`max` are enforced.
+  # 15s floor: a punchy single-claim clip can land well under 20s, and the
+  # shortest genuinely good moments in a talk are often the tightest ones.
+  # 60s ceiling is the practical limit for the vertical feeds this targets.
+  duration: {min: 15, target: 35, max: 60}
+
+  # start/end must land on a real word edge in words.json. This is the check
+  # that catches invented timestamps, which is the failure mode that actually
+  # happens.
+  snap_to_word_boundaries: true
+
+  # How far a start/end may sit from the word edge it claims, in seconds.
+  # Covers float rounding and transcription jitter, not guessing.
+  boundary_tolerance: 0.08
+
+  # A clip that opens mid-sentence sounds like a mistake, and one that ends
+  # mid-sentence sounds like a truncation. Both are enforced against the
+  # sentence flags in words.json.
+  start_on_sentence_start: true
+  end_on_sentence_end: true
+
+  # No dead-air span longer than this anywhere inside a clip, in seconds.
+  # Long pauses read as a stall on a vertical feed.
+  #
+  # 2.0 rather than the 1.2 this started at, and the change was made against
+  # measured speech rather than taste. On a real 58-minute webinar the median
+  # inter-word pause is 0.76s and the 90th percentile is 1.55s, so a 1.2s bar
+  # rejects roughly the top fifth of ordinary phrasing -- it threw out eight of
+  # sixteen good clips for pauses of 1.2-1.9s, every one of them a breath at a
+  # clause boundary. 2.0s is where the distribution actually turns: spans over
+  # it fall from 90 to 23 across the talk (1.6/min to 0.4/min), and the count
+  # barely moves when the detector threshold changes (-30dB: 23, -38dB: 22),
+  # so it is a property of the speech and not of the detector.
+  max_internal_silence: 2.0
+
+  # Air added before the first word and after the last, in seconds. Applied by
+  # `ms lint --fix`, and never allowed to run over a neighbouring word.
+  pad_in: 0.12
+  pad_out: 0.25
+
+  # The "first three seconds" that hook_strength judges, in seconds. Changing
+  # this changes the question the model is asked.
+  hook_window: 3.0
+
+  # Minimum seconds between the midpoints of any two clips. Keeps the set
+  # spread across the talk instead of clustered on one good ten minutes.
+  min_separation: 45
+
+  # A backstop against a runaway edit list, not an editorial opinion. How many
+  # good clips a talk contains is a property of the talk, and a 58-minute
+  # webinar can easily hold fifteen. The cap that actually protects quality is
+  # `diversity.max_per_theme` below: it stops the same point being cut five
+  # ways, which is what "too many clips" usually really means.
+  max_clips: 40
+
+  # visual_dependency: true then requires a slide region in the clip's layout.
+  require_slide_region_when_visually_dependent: true
+
+# ── Rubric: what "compelling" means. ────────────────────────────────────────
+# Each criterion is scored 1-5. `anchors` describe what 1, 3 and 5 actually
+# look like; 2 and 4 are the gaps between them. Anchors are written to be
+# discriminating — if two candidate clips could both plausibly be a 5, the
+# anchor is too vague and should be sharpened.
+rubric:
+  - id: hook_strength
+    weight: 3
+    question: >
+      Within the first 3.0 seconds, is there a claim, number, tension, or
+      question that makes a scrolling stranger stop? Not a preamble. Not a
+      greeting. Not "so the next thing I want to talk about is".
+    anchors:
+      1: "Starts mid-thought or in filler: 'So, um, yeah, and then…'. Nothing in the first 3s tells a stranger what is at stake."
+      3: "There is a real hook, but it arrives only after 5+ seconds of setup, or it is a question so general it could open any talk."
+      5: "The first sentence IS the hook — a number, a contradiction, a named stake. A stranger knows within 3s what they will find out if they stay."
+
+  - id: standalone
+    weight: 3
+    question: >
+      Does this make full sense with zero prior context? Penalize unresolved
+      references: 'as I mentioned', 'this slide', 'he just said', 'the third
+      one', 'that number we saw'.
+    anchors:
+      1: "Incomprehensible without the preceding ten minutes. Turns on a term, a chart, or a person introduced earlier and never re-explained."
+      3: "Mostly self-contained; one soft back-reference a viewer can shrug past ('like I said, pricing is hard')."
+      5: "Fully self-contained. Defines its own terms in passing, names its own subject, and would read the same as the opening of a talk."
+
+  - id: single_idea
+    weight: 2
+    question: >
+      Is this one idea, carried from setup to conclusion, or a stretch of talk
+      that happens to be interesting in more than one place? A clip that
+      changes subject halfway has no shape.
+    anchors:
+      1: "Three unrelated points, or the answer to one question running into the next question."
+      3: "One main idea plus a digression that does not pay for itself — the clip would be tighter 8 seconds shorter."
+      5: "One claim, developed and closed. Every sentence in the clip is doing work for the same point."
+
+  - id: payoff
+    weight: 2
+    question: >
+      Does the clip resolve what it opened? A viewer who watches to the end
+      should have gained the specific thing the hook promised — a rule, a
+      number, a verdict, a reframing.
+    anchors:
+      1: "Ends before the point lands, or trails into 'anyway, we can talk about that later'."
+      3: "The point does land, but as a restatement of the hook rather than as new ground."
+      5: "The last 10 seconds deliver the thing the first 3 seconds promised, and are quotable on their own."
+
+  - id: specificity
+    weight: 2
+    question: >
+      Numbers, names, dates, worked examples — or adjectives? Concrete detail
+      is what separates a clip that sounds authoritative from one that sounds
+      like every other clip in the category.
+    anchors:
+      1: "Entirely abstract: 'you really need to focus on the fundamentals and be intentional about growth'."
+      3: "One concrete detail carrying an otherwise general point."
+      5: "Multiple hard specifics — real figures, named companies or categories, a worked example a viewer could repeat."
+
+  - id: quotability
+    weight: 1
+    question: >
+      Is there a line in here someone would type into a post, screenshot, or
+      repeat in a meeting? Cite it in the evidence field verbatim.
+    anchors:
+      1: "Nothing memorable. Correct, useful, entirely unquotable."
+      3: "A decent line that needs its surrounding sentence to make sense."
+      5: "A standalone line under about fifteen words that carries the whole idea. Quote it in the evidence field."
+
+  - id: housekeeping
+    weight: 1
+    question: >
+      Is the clip free of webinar logistics — greetings, introductions, 'can
+      everyone see my screen', poll instructions, Q&A wrangling, thanks to the
+      sponsor, promises to send the deck?
+    anchors:
+      1: "Opens or closes on logistics: audio checks, 'drop your questions in the chat', 'we'll send the slides out after'."
+      3: "One brief aside that survives a viewer's patience but does not belong in a 45-second clip."
+      5: "No logistics, no crosstalk, no dead names. Every second is content."
+
+scoring:
+  method: weighted_mean
+  # Weighted mean of the 1-5 scores, weights as above (total 14). Lint
+  # recomputes this from why.scores and rejects a clip whose stated
+  # weighted_score disagrees by more than 0.01.
+  min_weighted_score: 3.8
+  # Any single failure kills the clip regardless of the mean. A clip that
+  # needs prior context or takes eight seconds to get going is not saved by
+  # scoring well everywhere else.
+  vetoes:
+    hook_strength: 4
+    standalone: 4
+    # Housekeeping is weight 1, so on the mean alone a clip full of logistics
+    # could still pass on the strength of everything else. It should not: a
+    # single "we'll send the slides out after" is enough to make a clip
+    # unpostable, and no amount of good content elsewhere buys it back. This
+    # is the difference between "counts against it" and "rules it out".
+    housekeeping: 4
+
+diversity:
+  # The model labels every clip with why.theme; lint enforces the cap. Eight
+  # clips about pricing is one clip about pricing.
+  max_per_theme: 2

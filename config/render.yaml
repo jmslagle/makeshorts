@@ -1,0 +1,152 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  render.yaml — everything ffmpeg-shaped.
+#
+#  This is the file you edit to change HOW clips are encoded. Nothing here
+#  affects WHICH moments get clipped (config/criteria.yaml) or WHAT the edit
+#  says (jobs/<slug>/clips.json). That separation is deliberate: clips.json is
+#  engine-agnostic and must survive swapping ffmpeg out entirely, so no codec,
+#  bitrate, preset, or filter string may ever appear in it.
+#
+#  Per-job overrides: drop a partial copy of this file at
+#  jobs/<slug>/config/render.yaml. It is merged key-by-key over this one, so
+#  you only list what differs.
+# ─────────────────────────────────────────────────────────────────────────────
+
+video:
+  # libx264 is the default for determinism and portability: the same input
+  # produces the same bytes on any machine, which is what makes re-rendering a
+  # clip a no-op you can trust.
+  #
+  # Swap to h264_videotoolbox for roughly 5-10x faster encodes using the Apple
+  # Silicon hardware encoder. It is NOT bit-deterministic and ignores `crf` and
+  # `preset` — set `bitrate` instead. Good for iterating on an edit; switch
+  # back to libx264 for the version you actually publish.
+  codec: libx264            # libx264 | libx265 | h264_videotoolbox
+
+  # Constant Rate Factor. Lower = better quality, bigger file. 18 is visually
+  # transparent, 23 is the ffmpeg default, 20 is a good compromise for the
+  # heavy upscaling a 1080x1920 vertical crop does to a 1080p source.
+  crf: 20
+
+  # Encoder speed/compression tradeoff. `medium` is the ffmpeg default;
+  # `slow` buys ~10% file size for ~2x the time; `veryfast` for quick previews.
+  preset: medium            # ultrafast … veryslow
+
+  # yuv420p is the only pixel format every social platform reliably ingests.
+  # Do not change this unless you know exactly why.
+  pix_fmt: yuv420p
+
+  # Used ONLY by hardware encoders (h264_videotoolbox), which have no CRF mode.
+  # Ignored by libx264/libx265.
+  bitrate: 8M
+
+  # H.264 profile/level. `high`/`4.1` covers 1080x1920@30 everywhere.
+  profile: high
+  level: "4.1"
+
+  # Put the moov atom at the front so the file starts playing before it has
+  # fully downloaded. Every upload target wants this.
+  faststart: true
+
+  # Escape hatch for flags this config does not model. Appended verbatim to the
+  # output-side of the ffmpeg command. Leave empty in normal use.
+  extra_args: []
+
+audio:
+  codec: aac
+  bitrate: 192k
+  sample_rate: 48000
+  # Vertical shorts are watched on phone speakers and in feeds that downmix
+  # anyway. Stereo keeps any source panning intact without costing much.
+  channels: 2
+
+  # Loudness normalization (EBU R128, via ffmpeg's `loudnorm`). Applied when a
+  # clip sets `audio.normalize: true` in clips.json — which is the default.
+  #
+  # -14 LUFS is the level the major social platforms normalize to. Delivering
+  # at their target means they leave the audio alone instead of pulling it
+  # down, which is why clips that skip this step sound quiet in the feed.
+  normalize:
+    integrated: -14.0       # I:   target integrated loudness, LUFS
+    true_peak: -1.5         # TP:  ceiling, dBTP — headroom for lossy transcode
+    range: 11.0             # LRA: target loudness range
+
+output:
+  # Relative to the job directory: jobs/<slug>/out/
+  dir: out
+  container: mp4
+
+  # The vertical frame every clip is rendered into. 1080x1920 @ 30fps is the
+  # native format for Shorts / Reels / TikTok. Overridable per edit list via
+  # `output` in clips.json, which wins over this.
+  width: 1080
+  height: 1920
+  fps: 30
+
+  # Refuse to clobber an existing render unless `ms render --force`.
+  overwrite: false
+
+ffmpeg:
+  # Absolute paths if the binaries are not on PATH.
+  binary: ffmpeg
+  probe_binary: ffprobe
+
+  # 0 = let ffmpeg decide (one thread per core).
+  threads: 0
+
+  # ffmpeg's own stderr is extremely noisy; only `warning` and above is useful
+  # once a render is working. Bump to `info` when debugging a filtergraph.
+  loglevel: warning
+
+captions:
+  # Which caption renderer to use. `auto` probes the installed ffmpeg: it picks
+  # the `subtitles` filter when the binary was built with libass, and falls
+  # back to compositing PNGs rendered by Pillow when it was not.
+  #
+  # The homebrew ffmpeg on this machine has NEITHER libass NOR libfreetype, so
+  # `auto` resolves to `pillow` here. Forcing `ass` will fail at render time.
+  backend: auto             # auto | ass | pillow
+
+  # Default style name, resolved against config/styles.yaml. A clip that names
+  # its own style in clips.json overrides this.
+  default_style: pill-karaoke
+
+  # Keep rendered caption PNGs in jobs/<slug>/cache/ so a re-render that only
+  # changed encoder settings does not redraw every frame of text.
+  cache: true
+
+  # Caption overlays are chunked into filtergraph stages of this many cues, to
+  # keep the graph from growing past what ffmpeg will parse on a long clip.
+  overlay_chunk: 40
+
+# ── Branding ────────────────────────────────────────────────────────────────
+# A watermark composited over every clip. This lives here, not in clips.json,
+# for the same reason caption styling does: which image, how large and which
+# corner is a property of the channel, not an editorial decision about a
+# particular clip. An edit list names a preset (or "none"); it never carries a
+# file path.
+#
+# Off by default because the repo ships no logo. To turn it on, either edit
+# this file, or -- better -- drop a `config/render.yaml` inside your job
+# directory with just the keys you want to change. Job config is layered over
+# this one, so a three-line override is enough and your branding stays out of
+# version control:
+#
+#   jobs/<slug>/config/render.yaml
+#   ------------------------------
+#   default_branding: mine
+#   branding:
+#     mine:
+#       enabled: true
+#       image: assets/my-logo.png     # transparent PNG
+#       corner: top_right             # top_left | top_right | bottom_left | bottom_right
+#       scale: 0.20                   # fraction of output width
+#       opacity: 0.85
+#       margin: 0.04                  # clear space at the frame edge
+#
+# Pick the variant that suits the footage: a dark-on-light mark disappears over
+# a dark camera feed, and a white mark disappears over a white slide.
+
+default_branding:
+
+branding: {}
