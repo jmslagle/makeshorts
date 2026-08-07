@@ -53,6 +53,15 @@ class Gates(Strict):
     max_clips: int = 8
     require_slide_region_when_visually_dependent: bool = True
 
+    # Words that must not be the first word of a clip. A cold open that starts
+    # on "So", "And" or "Um" tells a scrolling stranger nothing and wastes the
+    # hook window. Mechanically checkable, so it is a gate rather than
+    # something the rubric has to notice every time. Empty list disables it.
+    forbid_opening_fillers: list[str] = Field(default_factory=list)
+    # Whether a filler opening blocks the render or merely warns. Some
+    # connectives read fine in speech, so this is left to taste.
+    opening_filler_is_error: bool = True
+
 
 class Criterion(Strict):
     """One editorial criterion, scored 1-5 with cited evidence.

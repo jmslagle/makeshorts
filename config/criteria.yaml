@@ -80,6 +80,24 @@ gates:
   # visual_dependency: true then requires a slide region in the clip's layout.
   require_slide_region_when_visually_dependent: true
 
+  # A clip may not open on one of these words. The hook window is three
+  # seconds; spending the first of them on "So" or "And" throws it away, and a
+  # cold open that begins on a connective sounds like it was cut out of
+  # something rather than written. Mechanically checkable, so the rubric does
+  # not have to catch it by hand every time.
+  #
+  # Note the tension with start_on_sentence_start: the fix for a violation is
+  # usually to pick a different sentence, not to trim a word, because trimming
+  # would leave the clip opening mid-sentence. Set the list empty to disable.
+  forbid_opening_fillers:
+    [um, uh, er, ah, so, and, but, or, yeah, yep, well, like, okay, ok,
+     right, now, then, also, anyway, alright, because, actually, basically,
+     honestly, obviously]
+
+  # false downgrades a filler opening to a warning. Some connectives genuinely
+  # read fine in speech; this is the knob for deciding how strict to be.
+  opening_filler_is_error: true
+
 # ── Rubric: what "compelling" means. ────────────────────────────────────────
 # Each criterion is scored 1-5. `anchors` describe what 1, 3 and 5 actually
 # look like; 2 and 4 are the gaps between them. Anchors are written to be

@@ -108,6 +108,11 @@ class Severity(StrEnum):
 # is deliberately absent: snapping an invented timestamp to the nearest word
 # would produce a well-formed clip of some other part of the talk, which is a
 # worse outcome than the error. A fabricated time needs a human.
+#
+# `gate.opens_on_filler` is absent for the same reason. Dropping the leading
+# word would leave the clip opening mid-sentence, and choosing a different span
+# is an editorial decision about what the clip is -- not something a snapping
+# routine should make on its own.
 FIXABLE_RULES = frozenset(
     {
         "time.off_boundary",
@@ -195,6 +200,7 @@ RULES: dict[str, str] = {
     "gate.max_clips": "the edit list has more clips than gates.max_clips",
     "gate.start_on_sentence_start": "clip does not begin on a sentence start",
     "gate.end_on_sentence_end": "clip does not end on a sentence end",
+    "gate.opens_on_filler": "clip opens on a filler or connective word",
     "gate.no_sentence_flags": "words.json has no sentence flags, so those gates were skipped",
     "gate.silence_unavailable": "no silence.json supplied, so max_internal_silence was skipped",
     # 4. rubric
@@ -545,6 +551,42 @@ def _check_gates(
         if gates.end_on_sentence_end:
             _check_sentence_edge(clip, words, gates, "end", report)
 
+    _check_opening_filler(clip, gates, report)
+
+
+_WORD_RE = re.compile(r"[A-Za-z']+")
+
+
+def _check_opening_filler(clip: Clip, gates: Gates, report: LintReport) -> None:
+    """Reject a clip whose first spoken word is filler.
+
+    Read off `source_text` rather than words.json on purpose: source_text is
+    already verified against the transcript by `text.mismatch`, so it is the
+    same words, and this stays correct for a clip whose start was padded into
+    the silence before the first word.
+    """
+    fillers = {f.lower() for f in gates.forbid_opening_fillers}
+    if not fillers:
+        return
+    found = _WORD_RE.findall(clip.source_text)
+    if not found:
+        return
+    first = found[0].lower()
+    if first not in fillers:
+        return
+
+    opening = " ".join(found[:6])
+    severity = Severity.ERROR if gates.opening_filler_is_error else Severity.WARN
+    report.add(
+        "gate.opens_on_filler",
+        clip.id,
+        severity,
+        f"opens on the filler word {found[0]!r}: {opening!r}...  A cold open that "
+        f"begins on a connective spends the hook window saying nothing. Pick a "
+        f"span that starts on the point itself, or drop {found[0]!r} from "
+        f"gates.forbid_opening_fillers if it reads fine here.",
+    )
+
 
 def _check_internal_silence(
     clip: Clip, silence: SilenceDoc, gates: Gates, report: LintReport
@@ -581,7 +623,30 @@ def _check_sentence_edge(
         # Already reported as a time.* finding; a sentence verdict on a
         # timestamp we do not believe would only add noise.
         return
-    w = check.nearest.word
+    # Anchor on the word actually *inside* the clip, not on whatever edge is
+    # numerically closest. With padding applied, the closest edge to a clip end
+    # is often the NEXT word's onset -- pad_out legitimately runs into the gap
+    # before it -- and asking whether that word is a sentence end is asking
+    # about a word the clip never contains. The last word to finish before the
+    # cut is the one whose sentence flag matters.
+    # Containment, not proximity. A word that merely touches the cut is not in
+    # the clip: `They` starting at exactly the end timestamp is the next
+    # sentence, however close its own end happens to be.
+    slack = gates.boundary_tolerance + pad
+    eps = 1e-6
+    if side == "start":
+        # The first word that is still being spoken after the cut.
+        candidates = [x for x in words.words if x.end > t + eps]
+        w = min(candidates, key=lambda x: x.start, default=check.nearest.word)
+        if w.start > t + slack:
+            w = check.nearest.word
+    else:
+        # The last word that had already begun before the cut.
+        candidates = [x for x in words.words if x.start < t - eps]
+        w = max(candidates, key=lambda x: x.end, default=check.nearest.word)
+        if w.end < t - slack:
+            w = check.nearest.word
+
     flagged = w.sentence_start if side == "start" else w.sentence_end
     if flagged:
         return
