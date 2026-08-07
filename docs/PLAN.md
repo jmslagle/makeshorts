@@ -1,4 +1,12 @@
-# makeshorts — webinar → vertical shorts
+# makeshorts — design record
+
+> **Status: built.** This was the plan agreed before implementation, kept
+> because the *reasoning* behind each fork is still the best explanation of why
+> the code looks like it does. It has been corrected where the build diverged,
+> and [What changed during implementation](#what-changed-during-implementation)
+> at the end records those divergences and what forced them. For how to use the
+> tool see the [README](../README.md); for how to change it see
+> [CLAUDE.md](../CLAUDE.md).
 
 ## Context
 
@@ -6,7 +14,7 @@ Long-form webinar recordings contain a handful of moments worth clipping, and fi
 
 The deliverable of the thinking step is `clips.json`. A human must be able to read it, disagree with it, edit it, and re-render without touching the AI. `clips.json` is engine-agnostic — ffmpeg is today's renderer, not a concept the edit list knows about.
 
-Greenfield: `/Users/jslagle/proj/makeshorts` is empty, not a git repo.
+Greenfield at the time of writing: an empty directory.
 
 ### Environment findings that shape the design
 
@@ -133,16 +141,16 @@ version: "2026-08-06"
 
 # ── Gates: mechanically enforced by `ms lint`. The model never adjudicates these. ──
 gates:
-  duration: {min: 20, target: 45, max: 60}
+  duration: {min: 15, target: 35, max: 60}   # was 20/45/60 when planned
   snap_to_word_boundaries: true       # start/end must land on a real word edge in words.json
   start_on_sentence_start: true
   end_on_sentence_end: true
-  max_internal_silence: 1.2           # no dead-air span longer than this inside a clip
+  max_internal_silence: 2.0           # was 1.2 when planned; see 'what changed'
   pad_in: 0.12
   pad_out: 0.25
   hook_window: 3.0                    # the "first three seconds" the rubric judges
   min_separation: 45                  # seconds between clip midpoints — keeps clips spread out
-  max_clips: 8
+  max_clips: 40                       # was 8 when planned
   require_slide_region_when_visually_dependent: true
 
 # ── Rubric: what "compelling" means. This is the tunable surface. ──
@@ -304,6 +312,88 @@ Assign one agent per track. Do not split a track across agents; each track is sm
 - **End-to-end on real input:** `ms prepare` a real webinar → read `transcript.txt` and `regions.json` → write `clips.json` → `ms lint` → `ms render` → watch the clips.
 - **Engine-agnosticism, enforced:** a test that greps `select/` and `prepare/` for ffmpeg vocabulary (`crop=`, `-vf`, `libx264`, `overlay=`, `scale=`) and fails on a hit. Plus a schema test asserting no codec/filter/path keys exist anywhere in `clips.json`.
 
-## Non-goals for v1
+## Non-goals
 
-Auto-posting or platform APIs; music beds; B-roll; transitions beyond hard cuts; multi-source or multi-camera-file inputs; a GUI. `full` as a layout mode (subsumed by `focus` on the implicit `frame` region).
+Auto-posting or platform APIs; music beds; B-roll; transitions beyond hard cuts; a GUI.
+
+*(Multi-source input was listed here as a non-goal and was built anyway — see below.)* `full` as a layout mode (subsumed by `focus` on the implicit `frame` region).
+
+---
+
+## What changed during implementation
+
+Every divergence below was forced by contact with a real 58-minute Zoom
+recording. They are recorded because the *reason* generalises even where the
+specific number does not.
+
+### Multi-source input — was a non-goal, was built
+
+A Zoom cloud recording exports several frame-aligned renders of the same
+meeting. Measured on a real one, the speaker occupied:
+
+| view | speaker pixels | upscale to fill 1080 wide |
+|---|---|---|
+| `_avo_` active speaker | 1280×720 | 2.67× |
+| `_gvo_` gallery | 640×360 | 5.35× |
+| `_gallery_` PiP tile | 322×181 | 10.7× |
+| `_as_` shared screen | *no camera at all* | — |
+
+The sharp slides and the only usable face were in **different files**. No
+single-source choice could produce a clip with both, so the non-goal had to go.
+
+It cost less than expected, and that is the design paying off: `source` became
+a named `sources` map, regions gained a `source` field — and **layouts did not
+change at all**, because they already referred to regions by name. Old
+single-source edit lists still validate untouched. New lint rules
+(`source.clip_out_of_range`, `source.duration_mismatch`) check the assumption
+that makes mixing safe: that the files share a clock.
+
+### Three gate values were wrong, and the data said so
+
+- **`max_internal_silence` 1.2 → 2.0s.** The original figure was a guess. It
+  rejected eight of sixteen good clips for pauses of 1.2–1.9s, every one a
+  breath at a clause boundary. Measured, that talk's median inter-word pause
+  was 0.76s and the 90th percentile 1.55s — so 1.2 was cutting into the top
+  fifth of ordinary phrasing. 2.0s is where the distribution turns (90 spans
+  over the threshold become 23), and it barely moves when the silence detector
+  threshold changes, so it is a property of speech and not of the detector.
+- **`max_clips` 8 → 40.** Arbitrary. How many good clips a talk holds is a
+  property of the talk. `diversity.max_per_theme` is the cap that actually
+  protects quality.
+- **`duration.min` 20 → 15s.** The tightest moments are often the shortest.
+
+### A gate the plan never imagined: `gate.opens_on_filler`
+
+A cold open beginning on "So", "And" or "Um" spends the hook window saying
+nothing — and it is mechanically checkable, so the rubric should not have to
+notice it by hand every time. Added after five of sixteen clips shipped with
+openings like *"And they forklift…"* despite being scored and passed. Four had
+a markedly better opener one sentence away.
+
+Deliberately **not** in `FIXABLE_RULES`: trimming the leading word leaves the
+clip mid-sentence, and picking a different span is an editorial decision about
+what the clip *is*.
+
+### Region detection localises content, not subjects
+
+The plan assumed detected regions would be enough to frame a speaker. They are
+not. Detection correctly reports "this whole frame is a camera" — true, and
+useless when the subject sits off-centre, which cropped the presenter's face in
+half.
+
+Worse, the subject **moved**: measured across the talk, his face drifted from
+0.688 to 0.761 of frame width. No fixed centre suits every clip.
+
+The fix was entirely in `clips.json` — a region rect roughly 1.2× wider than a
+bare 9:16 crop, centred on the measured face position, with
+`fit: contain_blur`. The extra width both adds real pixels (`cover` always
+crops to 9:16, so widening it only pans) and makes the residual drift stop
+mattering. **No code changed**, which is the clearest evidence the
+mechanical/editorial seam is in the right place.
+
+### Captions burn in one pass, not per span
+
+The plan had captions applied per layout span. That would cut a caption cue in
+half whenever a layout change landed mid-sentence. They are instead burned once
+over the concatenated clip — the same reasoning the plan already applied to
+audio seams, which turns out to apply to captions too.

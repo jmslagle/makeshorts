@@ -99,6 +99,8 @@ uv venv && uv pip install -e .
 ms caps          # what your ffmpeg can actually do
 ```
 
+Full setup, model download, fonts and troubleshooting: **[INSTALL.md](INSTALL.md)**.
+
 **Captions do not need a special ffmpeg build.** Many ffmpeg packages ship
 without `libass`/`libfreetype`, which means no `subtitles` and no `drawtext`
 filter. `ms caps` probes for this and the caption layer picks a backend
@@ -161,6 +163,15 @@ uv run pytest
 Fixtures are synthesized with `ffmpeg -f lavfi` rather than committed, so the
 suite carries no binary media. Region detection is tested against sources whose
 correct answer is known by construction.
+
+## Documentation
+
+| | |
+|---|---|
+| [INSTALL.md](INSTALL.md) | setup, ffmpeg notes, model download, troubleshooting |
+| [CLAUDE.md](CLAUDE.md) | invariants and traps, for changing the code |
+| [.claude/skills/makeshorts](.claude/skills/makeshorts/SKILL.md) | the workflow, for driving the tool on a new recording |
+| [docs/PLAN.md](docs/PLAN.md) | design record — the forks, and what implementation changed |
 
 ## Non-goals
 

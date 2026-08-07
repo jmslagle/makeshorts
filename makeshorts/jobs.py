@@ -481,12 +481,18 @@ class Job:
 
     @property
     def stage(self) -> str:
-        """The furthest stage reached, as a single word for `ms jobs`."""
+        """The furthest stage reached, as a single word for `ms jobs`.
+
+        The *furthest*, not the last before a gap. Stages are legitimately
+        skippable -- `--skip transcribe` leaves no words.json, a hand-assembled
+        edit list may have no copied source -- and stopping at the first gap
+        reported a job with sixteen rendered clips as `empty`, then advised
+        re-running `ms prepare` over it.
+        """
         reached = "empty"
         for name, done in self.stages.items():
-            if not done:
-                break
-            reached = name
+            if done:
+                reached = name
         return reached
 
     def rendered_clip_ids(self) -> list[str]:

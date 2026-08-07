@@ -226,16 +226,38 @@ def test_stage_advances_as_artifacts_appear(tmp_path: Path) -> None:
     assert job.stage == "rendered"
 
 
-def test_a_gap_stops_the_stage_advancing(tmp_path: Path) -> None:
-    """clips.json written without a PROMPT.md must not report `clips`. The
-    stage is the furthest *contiguous* milestone, so `ms jobs` cannot claim a
-    job is further along than its artifacts support."""
+def test_a_gap_does_not_hide_later_progress(tmp_path: Path) -> None:
+    """A missing PROMPT.md must not mask a clips.json that exists.
+
+    Stages are skippable by design: PROMPT.md is a convenience for the
+    editorial step rather than a prerequisite, an edit list can be written by
+    hand, and `--skip transcribe` deliberately leaves no words.json. Reporting
+    the furthest *contiguous* milestone therefore understates a job badly --
+    it called a job with sixteen rendered clips `empty` and told the user to
+    run `ms prepare` over the top of it. The furthest milestone actually
+    reached is both accurate and useful.
+    """
     job = Job.create("acme-q3", tmp_path)
     (job.root / "source.mp4").write_bytes(b"x")
     job.media_json.write_text("{}")
     job.words_json.write_text("{}")
     job.clips_json.write_text("{}")
-    assert job.stage == "prepared"
+    assert job.stage == "clips"
+
+
+def test_stage_is_empty_only_when_nothing_exists(tmp_path: Path) -> None:
+    job = Job.create("acme-q4", tmp_path)
+    assert job.stage == "empty"
+
+
+def test_a_rendered_job_reports_rendered_even_without_a_source_copy(tmp_path: Path) -> None:
+    """The case that exposed this: an edit list assembled by hand, rendered,
+    with no source file ever copied into the job."""
+    job = Job.create("acme-q5", tmp_path)
+    job.clips_json.write_text("{}")
+    job.ensure_dirs()
+    (job.out_dir / "acme-q5--01-x.mp4").write_bytes(b"x")
+    assert job.stage == "rendered"
 
 
 def test_rendered_clip_ids_strips_the_slug_prefix(tmp_path: Path) -> None:
