@@ -119,8 +119,12 @@ def _esc(path: Path) -> str:
 class FFmpegEngine:
     name = "ffmpeg"
 
-    def __init__(self, settings: EncodeSettings | None = None, ffmpeg: str | None = None) -> None:
+    def __init__(self, settings: EncodeSettings | None = None, ffmpeg: str | None = None,
+                 layout_options: L.LayoutOptions | None = None) -> None:
         self.settings = settings or EncodeSettings()
+        # Geometry policy from config/render.yaml. None means layout.py's own
+        # defaults, which is what a caller with no config should get.
+        self.layout_options = layout_options
         self.ffmpeg = ffmpeg or shutil.which("ffmpeg") or "ffmpeg"
         self.ffprobe = shutil.which("ffprobe") or "ffprobe"
 
@@ -402,7 +406,7 @@ class FFmpegEngine:
 
         # layout reads each source's resolution off the document, so every
         # region is measured against the file it actually lives in.
-        spans = L.plan_clip(clip, regions, doc, out_size)
+        spans = L.plan_clip(clip, regions, doc, out_size, self.layout_options)
         commands: list[str] = []
 
         with TemporaryDirectory(prefix=f"ms-{clip.id}-") as td:

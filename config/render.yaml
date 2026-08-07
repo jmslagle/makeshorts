@@ -150,3 +150,27 @@ captions:
 default_branding:
 
 branding: {}
+
+# ── Layout geometry ─────────────────────────────────────────────────────────
+# Presentation policy shared by every render engine: how strong the backdrop
+# blur is, how big an inset sits, how much room captions get. Not editorial —
+# clips.json says *what* is on screen, this says how it is presented.
+#
+# Every key is optional; omitted ones use the defaults in render/layout.py.
+layout:
+  # Blur strength behind letterboxed content, as a fraction of output width.
+  # 0.02 (~21px at 1080) leaves large slide text legible enough in the backdrop
+  # to read as a duplicate of the real slide; 0.05 (~54px) reads as texture.
+  blur_radius_pct: 0.05
+
+  # Inset size and placement for hero_inset, as fractions.
+  inset_margin_pct: 0.03
+  inset_max_height_pct: 0.45
+
+  # Room kept clear for burned-in captions, in output pixels. An inset will
+  # not be placed into this band.
+  caption_safe_bottom_px: 0
+  caption_safe_top_px: 0
+
+  # Gap between bands in a stack layout, in output pixels.
+  stack_gap_px: 0

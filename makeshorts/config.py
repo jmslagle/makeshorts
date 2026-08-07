@@ -310,6 +310,10 @@ class RenderConfig(Strict):
     # Preset name -> settings. `clips.json` may name one, or "none".
     branding: dict[str, BrandingConfig] = Field(default_factory=dict)
     default_branding: str | None = None
+    # Geometry policy handed to layout.py. Validated against the real
+    # LayoutOptions model in Config.layout_options() rather than mirrored
+    # here, so the two cannot drift apart.
+    layout: dict[str, Any] = Field(default_factory=dict)
 
 
 # --------------------------------------------------------------------------
@@ -447,6 +451,28 @@ class Config:
         Returns a `render.captions.style.CaptionStyle`.
         """
         return self.styles.get(name or self.render.captions.default_style)
+
+    def layout_options(self) -> Any:
+        """`render.yaml`'s `layout:` block as a `render.layout.LayoutOptions`.
+
+        Deferred import for the same reason as styles: the model belongs to the
+        render side, which is the only code with an opinion about what a blur
+        radius means, and mirroring it here would guarantee the two drift.
+
+        These are presentation policy, not editorial decisions -- how strong
+        the backdrop blur is, how large an inset sits, how much room captions
+        are left. They are shared by any engine, which is why they live beside
+        codec settings rather than in `clips.json`.
+        """
+        from makeshorts.render.layout import LayoutOptions  # noqa: PLC0415
+
+        try:
+            return LayoutOptions.model_validate(self.render.layout or {})
+        except ValidationError as exc:
+            raise ConfigInvalid(
+                Path(self.sources[0]) if self.sources else Path(RENDER_FILENAME),
+                f"invalid `layout:` block: {exc}",
+            ) from exc
 
 
 def _layer_paths(

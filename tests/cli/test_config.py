@@ -280,3 +280,45 @@ def test_unquoted_numeric_level_is_accepted(tmp_path: Path) -> None:
     d.mkdir()
     (d / "render.yaml").write_text("video:\n  level: 4.1\n")
     assert load_render_config(d).video.level == "4.1"
+
+
+# -- layout geometry --------------------------------------------------------
+
+
+def test_layout_options_come_from_render_yaml(tmp_path: Path) -> None:
+    """The `layout:` block reaches layout.py's own model.
+
+    Validated against the real LayoutOptions rather than a mirror in config.py,
+    so a field added there is usable from YAML immediately and the two cannot
+    drift.
+    """
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+    (cfg_dir / "render.yaml").write_text(
+        "video:\n  codec: libx264\nlayout:\n  blur_radius_pct: 0.09\n  stack_gap_px: 12\n"
+    )
+    opts = load_config(cfg_dir).layout_options()
+    assert opts.blur_radius_pct == 0.09
+    assert opts.stack_gap_px == 12
+    # Unspecified keys keep layout.py's defaults rather than becoming zero.
+    assert opts.inset_max_height_pct == 0.45
+
+
+def test_layout_block_is_optional(tmp_path: Path) -> None:
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+    (cfg_dir / "render.yaml").write_text("video:\n  codec: libx264\n")
+    opts = load_config(cfg_dir).layout_options()
+    assert opts.blur_radius_pct == 0.02  # layout.py's default
+
+
+def test_a_bad_layout_value_names_the_field(tmp_path: Path) -> None:
+    """Out of range should fail while reading config, not silently clamp."""
+    cfg_dir = tmp_path / "config"
+    cfg_dir.mkdir()
+    (cfg_dir / "render.yaml").write_text(
+        "video:\n  codec: libx264\nlayout:\n  blur_radius_pct: 5.0\n"
+    )
+    with pytest.raises(ConfigError) as exc:
+        load_config(cfg_dir).layout_options()
+    assert "blur_radius_pct" in str(exc.value)

@@ -1261,6 +1261,15 @@ def _apply_render_config(engine: Any, cfg: config_mod.Config, doc: Any) -> None:
     instance is rebuilt with whichever of these names it declares. Nothing here
     is ffmpeg-specific and no backend module is imported.
     """
+    # Geometry policy, if the engine accepts any. Set before the `configure`
+    # branch so it applies to both kinds of engine — an engine that grows a
+    # configure() hook should not silently lose its layout settings.
+    if hasattr(engine, "layout_options"):
+        try:
+            engine.layout_options = cfg.layout_options()
+        except config_mod.ConfigError as exc:
+            _die(str(exc))
+
     configure = getattr(engine, "configure", None)
     if callable(configure):
         configure(cfg.render)
