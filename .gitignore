@@ -31,5 +31,9 @@ dist/
 # Test artifacts
 tests/render/_samples/*.png
 
+# Claude Code local state — the skill in .claude/skills/ IS tracked.
+.claude/settings.local.json
+.claude/worktrees/
+
 # macOS
 .DS_Store
