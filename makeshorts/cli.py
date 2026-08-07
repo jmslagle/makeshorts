@@ -994,6 +994,7 @@ def render(
             _out(f"{prefix}  {_dim('skipped — already rendered; --force to redo')}")
             continue
         try:
+            _warn_unknown_transitions(clip, cfg)
             # Branding first so captions composite over it if they ever meet.
             overlays = _branding_overlays(job, clip, doc, cfg) + _caption_overlays(
                 job, clip, doc, cfg
@@ -1060,6 +1061,23 @@ def _caption_overlays(
         position=clip.captions.position,
     )
     return list(assets.overlays)
+
+
+def _warn_unknown_transitions(clip: Any, cfg: Any) -> None:
+    """Say so when a clip names a transition render.yaml does not define.
+
+    The engine hard-cuts rather than failing, which is the right behaviour for
+    a cosmetic setting — but silently is the wrong way to do it. A typo'd name
+    should not look like a deliberate hard cut.
+    """
+    known = set(getattr(cfg.render, "transitions", {}))
+    for span in clip.spans:
+        name = getattr(span, "transition", None)
+        if name and name != "none" and name not in known:
+            _out(
+                f"  {_severity(WARNING)}  {clip.id}: unknown transition {name!r} "
+                f"— hard cut. Defined: {', '.join(sorted(known)) or '(none)'}"
+            )
 
 
 def _branding_overlays(job: jobs_mod.Job, clip: Any, doc: Any, cfg: Any) -> list[Any]:
@@ -1271,6 +1289,18 @@ def _apply_render_config(engine: Any, cfg: config_mod.Config, doc: Any) -> None:
             engine.layout_options = cfg.layout_options()
         except config_mod.ConfigError as exc:
             _die(str(exc))
+
+    # Transition, edge-fade and outro policy. Set the same way and for the same
+    # reason: read from render.yaml and ignored would be the worst outcome.
+    for attr, value in (
+        ("transitions", dict(cfg.render.transitions)),
+        ("fade_in", cfg.render.fade.in_),
+        ("fade_out", cfg.render.fade.out),
+        ("outro", dict(cfg.render.outro)),
+        ("default_outro", cfg.render.default_outro),
+    ):
+        if hasattr(engine, attr):
+            setattr(engine, attr, value)
 
     configure = getattr(engine, "configure", None)
     if callable(configure):

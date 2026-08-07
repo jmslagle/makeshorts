@@ -1042,3 +1042,36 @@ def test_report_format_summarises() -> None:
 
     text = broken(mutate).format()
     assert "1 error(s), 0 warning(s)" in text
+
+
+def test_transition_on_the_first_span_warns() -> None:
+    """It cannot apply -- there is nothing before it -- but it must not block."""
+    doc = base_doc()
+    clip = doc.clips[0]
+    spans = [s.model_copy(deep=True) for s in clip.spans]
+    spans[0] = spans[0].model_copy(update={"transition": "dissolve"})
+    doc = doc.model_copy(
+        update={"clips": [clip.model_copy(update={"layout": spans})] + list(doc.clips[1:])}
+    )
+    report = lint_doc(doc, words=WORDS, criteria=CRITERIA, silence=SILENCE)
+    assert "ref.transition_on_first_span" in report.rule_ids()
+    assert report.ok, "a meaningless transition must not block the render"
+
+
+def test_a_transition_on_a_later_span_is_fine() -> None:
+    doc = base_doc()
+    multi = next((c for c in doc.clips if len(c.spans) > 1), None)
+    if multi is None:
+        pytest.skip("fixture has no multi-span clip")
+    spans = [s.model_copy(deep=True) for s in multi.spans]
+    spans[1] = spans[1].model_copy(update={"transition": "dissolve"})
+    doc = doc.model_copy(
+        update={
+            "clips": [
+                c.model_copy(update={"layout": spans}) if c.id == multi.id else c
+                for c in doc.clips
+            ]
+        }
+    )
+    report = lint_doc(doc, words=WORDS, criteria=CRITERIA, silence=SILENCE)
+    assert "ref.transition_on_first_span" not in report.rule_ids()

@@ -174,3 +174,54 @@ layout:
 
   # Gap between bands in a stack layout, in output pixels.
   stack_gap_px: 0
+
+# ── Transitions ─────────────────────────────────────────────────────────────
+# What a named transition looks like. clips.json decides *which* cuts get one
+# by naming a preset on a layout span; this decides what one is. A span with no
+# `transition` is a hard cut, which stays the default.
+#
+#   "layout": [
+#     {"at": 0.0,  "mode": "focus", "region": "cam"},
+#     {"at": 11.7, "mode": "hero_inset", "hero": "slides", "inset": "cam",
+#      "transition": "dissolve"}
+#   ]
+#
+# Keep durations short. A transition consumes runtime on a 15-60s clip, and
+# anything much past half a second reads as sluggish rather than considered.
+transitions:
+  dissolve:
+    type: fade
+    duration: 0.35
+  soft:
+    type: fade
+    duration: 0.6
+  wipe:
+    type: wiperight
+    duration: 0.4
+
+# Fade from and to black at the clip's own edges, in seconds. 0 disables.
+#
+# `in` is deliberately tiny. The first three seconds are what hook_strength is
+# scored on, and a fade-in spends them on nothing — 0.15s takes the edge off a
+# hard cut without costing the hook. `out` can afford to be longer; nobody is
+# deciding whether to keep watching at that point.
+fade:
+  in: 0.15
+  out: 0.35
+
+# ── Outro bumper ────────────────────────────────────────────────────────────
+# A video concatenated after each clip, normalised to the clip's resolution,
+# frame rate and codec first. A supplied file rather than a generated card:
+# the design belongs in a design tool.
+#
+# Off by default — the repo ships no bumper. A clip may name a preset, or say
+# "none" to skip one. If the file is missing, `ms render` warns and renders the
+# clip without it rather than failing the batch.
+default_outro:
+
+outro: {}
+#  standard:
+#    file: assets/outro.mp4
+#    audio: keep        # or "mute" — the clip's audio is loudness-normalised
+#                       # and a bumper's usually is not
+#    max_duration: 3.0  # trim a longer bumper

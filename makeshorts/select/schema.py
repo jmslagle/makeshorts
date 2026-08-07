@@ -42,6 +42,14 @@ class LayoutBase(Strict):
     # clip omits it. The first span must be at 0.0 (enforced by the linter).
     at: float = 0.0
 
+    # How this span is entered: a transition preset NAME from render.yaml, or
+    # omitted for a hard cut. A name rather than a filter or a duration for the
+    # same reason a caption style is a name -- "dissolve" is a decision about
+    # this cut, while what a dissolve looks like is presentation config every
+    # engine resolves for itself. Meaningless on the first span, which has
+    # nothing to transition from; the linter says so.
+    transition: str | None = None
+
 
 class FocusLayout(LayoutBase):
     """One region fills the output frame.
@@ -187,6 +195,11 @@ class Clip(Strict):
     # image, at what size, in which corner is presentation config that every
     # clip shares, not an editorial decision about this clip.
     branding: str | None = None
+
+    # An outro preset NAME, "none" to omit one on this clip, or omitted to take
+    # the configured default. Same rule as branding: the edit list never
+    # carries the file.
+    outro: str | None = None
 
     @property
     def duration(self) -> float:

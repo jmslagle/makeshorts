@@ -52,7 +52,18 @@ same three modes over different regions:
 | `stack` | regions tiled vertically |
 
 A layout may be a list of timed spans, so a clip can cut from the speaker to a
-slide partway through.
+slide partway through — and a span may name a `transition` to dissolve into
+rather than cut:
+
+```jsonc
+{"at": 18.9, "mode": "hero_inset", "hero": "slides", "inset": "cam",
+ "transition": "dissolve"}
+```
+
+A *name*, not a filter or a duration: which cuts deserve a transition is
+editorial, what a dissolve looks like is config. Short fades at the clip's own
+edges and an optional outro bumper live entirely in `render.yaml`, since they
+are uniform across a set.
 
 **Several source files, one clip.** A Zoom export gives frame-aligned renders of
 the same meeting — sharp slides in one file, the only usable face in another.
@@ -176,8 +187,8 @@ correct answer is known by construction.
 
 ## Non-goals
 
-Auto-posting or platform APIs; music beds; B-roll; transitions beyond hard cuts;
-a GUI.
+Auto-posting or platform APIs; music beds; B-roll; a GUI; compilation output
+(several clips stitched into one reel).
 
 ## License
 

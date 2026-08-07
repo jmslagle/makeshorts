@@ -129,6 +129,8 @@ code is usually a sign of a misdiagnosis:
 | Good clips rejected for "dead air" | measure real pause lengths, then set `max_internal_silence` from the data |
 | Too many similar clips | `diversity.max_per_theme` |
 | Watermark invisible | different logo variant in `config/render.yaml` |
+| Cut between layouts feels abrupt | name a `transition` on the later span |
+| Clip starts/ends too hard | `fade.in` / `fade.out` in `render.yaml` |
 
 When a gate rejects something you believe is good, work out whether the rule or
 the clip is wrong — and settle it with a measurement, not a preference. On one

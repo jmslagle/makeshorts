@@ -201,6 +201,7 @@ RULES: dict[str, str] = {
     "gate.start_on_sentence_start": "clip does not begin on a sentence start",
     "gate.end_on_sentence_end": "clip does not end on a sentence end",
     "gate.opens_on_filler": "clip opens on a filler or connective word",
+    "ref.transition_on_first_span": "the first span names a transition, which cannot apply",
     "gate.no_sentence_flags": "words.json has no sentence flags, so those gates were skipped",
     "gate.silence_unavailable": "no silence.json supplied, so max_internal_silence was skipped",
     # 4. rubric
@@ -552,6 +553,28 @@ def _check_gates(
             _check_sentence_edge(clip, words, gates, "end", report)
 
     _check_opening_filler(clip, gates, report)
+    _check_first_span_transition(clip, report)
+
+
+def _check_first_span_transition(clip: Clip, report: LintReport) -> None:
+    """A transition entering the first span has nothing to come from.
+
+    A warning rather than an error: the render is still correct (the engine has
+    nothing to blend and hard-cuts), but the edit list says something it cannot
+    mean, and a reader would reasonably expect a fade-in. Edge fades in
+    render.yaml are what actually produce that.
+    """
+    spans = clip.spans
+    if spans and getattr(spans[0], "transition", None):
+        report.add(
+            "ref.transition_on_first_span",
+            clip.id,
+            Severity.WARN,
+            f"the first layout span names transition "
+            f"{spans[0].transition!r}, but there is nothing before it to "
+            "transition from — it will hard-cut. For a fade from black, set "
+            "`fade.in` in render.yaml, which applies to every clip.",
+        )
 
 
 _WORD_RE = re.compile(r"[A-Za-z']+")

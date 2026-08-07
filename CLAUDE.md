@@ -68,6 +68,19 @@ end, the numerically nearest word edge is often the *next* word's onset, since
 correct padding fail `end_on_sentence_end`, so `--fix` could never produce a
 passing file. Ask "which word was being spoken", not "which edge is closest".
 
+**`xfade` consumes its overlap.** Joining a segment of length La to one of
+length Lb with a D-second crossfade yields `La + Lb - D`, not `La + Lb`. Spans
+followed by a transition are therefore rendered D seconds longer and the offset
+pulls it back. Get this wrong and every transition silently shortens the clip
+and drifts it against its own audio — which no test asserting "it rendered"
+will catch.
+
+**Transitions are not geometry**, so `layout.py` does not carry them and
+`SpanPlan` has no `transition`. The engine reads them from `clip.spans`, which
+is what `plan_clip` derived its spans from, so the two lists correspond by
+index. Adding it to `SpanPlan` would put an editorial decision inside a pure
+geometry module.
+
 **Region detection classifies content, not subjects.** It answers "this area is
 a slide, that one is a camera" — it does not locate a face. Framing a speaker
 is an editorial decision expressed as a region rect in `clips.json`.
@@ -75,7 +88,7 @@ is an editorial decision expressed as a region rect in `clips.json`.
 ## Tests
 
 ```bash
-uv run pytest          # 708 tests, ~20s
+uv run pytest          # ~720 tests, ~25s
 ```
 
 Media fixtures are synthesized with `ffmpeg -f lavfi`, never committed. Region
@@ -85,6 +98,10 @@ committed sample video is both a licensing problem and a repo-size problem.
 
 ## What is deliberately not here
 
-Auto-posting, music beds, B-roll, transitions beyond hard cuts, a GUI. And
-`full` is not a layout mode: it is `{"mode": "focus", "region": "frame",
-"fit": "contain_blur"}`.
+Auto-posting, music beds, B-roll, a GUI, and compilation output (several clips
+stitched into one reel). And `full` is not a layout mode: it is
+`{"mode": "focus", "region": "frame", "fit": "contain_blur"}`.
+
+Transitions *were* on this list and are not any more — span-to-span crossfades,
+edge fades and an outro bumper all exist. Compilation transitions remain out,
+because there is nothing yet to transition between.

@@ -301,6 +301,62 @@ class BrandingConfig(Strict):
     margin: float = Field(default=0.04, ge=0.0, le=0.2)
 
 
+# xfade's own names. Enumerated so a typo fails while reading config rather
+# than 40 minutes into a batch.
+TransitionType = Literal[
+    "fade", "fadeblack", "fadewhite", "dissolve",
+    "wipeleft", "wiperight", "wipeup", "wipedown",
+    "slideleft", "slideright", "slideup", "slidedown",
+    "circlecrop", "circleopen", "circleclose", "smoothleft", "smoothright",
+    "smoothup", "smoothdown", "pixelize", "radial", "hblur",
+]
+
+
+class TransitionConfig(Strict):
+    """What a named transition looks like.
+
+    `clips.json` says *which cuts* get one -- an editorial call about this
+    clip. This says what one is, which is presentation policy shared by every
+    engine.
+    """
+
+    type: TransitionType = "fade"
+    # Seconds of overlap. Kept short by default: on a 15-60s clip a long
+    # dissolve spends real runtime and reads as sluggish.
+    duration: float = Field(default=0.4, gt=0.0, le=3.0)
+
+
+class FadeConfig(Strict):
+    """Fade from and to black at the clip's own edges.
+
+    Uniform across a set rather than per clip, so it lives here with no
+    clips.json counterpart. `in_` is deliberately small: a fade-in eats the
+    hook window, which is the three seconds `hook_strength` is scored on.
+    """
+
+    in_: float = Field(default=0.0, ge=0.0, le=2.0, alias="in")
+    out: float = Field(default=0.0, ge=0.0, le=2.0)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+class OutroConfig(Strict):
+    """A bumper concatenated after the clip.
+
+    A supplied file rather than a generated card: the design belongs in a
+    design tool, and normalising an existing video is less code than
+    reimplementing motion graphics badly.
+    """
+
+    file: str | None = None
+    # Bumpers often carry their own music. "mute" silences it, which is the
+    # safer default when the clip's own audio has been loudness-normalised and
+    # the bumper has not.
+    audio: Literal["keep", "mute"] = "keep"
+    # Trim a long bumper down; None uses the whole file.
+    max_duration: float | None = Field(default=None, gt=0.0)
+
+
 class RenderConfig(Strict):
     video: VideoConfig = Field(default_factory=VideoConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
@@ -314,6 +370,11 @@ class RenderConfig(Strict):
     # LayoutOptions model in Config.layout_options() rather than mirrored
     # here, so the two cannot drift apart.
     layout: dict[str, Any] = Field(default_factory=dict)
+    # Preset name -> what that transition looks like. clips.json names one.
+    transitions: dict[str, TransitionConfig] = Field(default_factory=dict)
+    fade: FadeConfig = Field(default_factory=FadeConfig)
+    outro: dict[str, OutroConfig] = Field(default_factory=dict)
+    default_outro: str | None = None
 
 
 # --------------------------------------------------------------------------

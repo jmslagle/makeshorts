@@ -314,9 +314,9 @@ Assign one agent per track. Do not split a track across agents; each track is sm
 
 ## Non-goals
 
-Auto-posting or platform APIs; music beds; B-roll; transitions beyond hard cuts; a GUI.
+Auto-posting or platform APIs; music beds; B-roll; a GUI; compilation output.
 
-*(Multi-source input was listed here as a non-goal and was built anyway — see below.)* `full` as a layout mode (subsumed by `focus` on the implicit `frame` region).
+*(Multi-source input and transitions were both listed here as non-goals and were built anyway — see below.)* `full` as a layout mode (subsumed by `focus` on the implicit `frame` region).
 
 ---
 
@@ -397,3 +397,28 @@ The plan had captions applied per layout span. That would cut a caption cue in
 half whenever a layout change landed mid-sentence. They are instead burned once
 over the concatenated clip — the same reasoning the plan already applied to
 audio seams, which turns out to apply to captions too.
+
+### Transitions and an outro bumper — also once non-goals
+
+Both came from presenting the clips: hard cuts between layouts read as abrupt,
+and a set of clips wants a consistent ending. They fit the existing pattern
+without a new concept: a span names a `transition` preset, `render.yaml` says
+what that preset is. Which cuts deserve one is editorial; what a dissolve looks
+like is presentation.
+
+Edge fades and the outro have no `clips.json` counterpart at all, because they
+are uniform across a set rather than decisions about a particular clip. The
+outro is a supplied video file rather than a generated card — the design
+belongs in a design tool, and normalising an existing video is far less code
+than reimplementing motion graphics badly.
+
+The one genuinely tricky part is timing. `xfade` *consumes* its overlap, so
+joining segments of length La and Lb with a D-second crossfade yields
+`La + Lb - D`. Each span followed by a transition is therefore rendered D
+seconds longer, and the xfade offset pulls it back. Get it wrong and every
+transition silently shortens the clip and drifts it against its own audio —
+which no test asserting "it rendered" would catch.
+
+Compilation transitions stay out of scope: there is no compilation output yet,
+so it would be building the transition before the thing it transitions
+between.
