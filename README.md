@@ -127,6 +127,7 @@ ms lint   my-webinar        # exits non-zero on error
 ms lint   my-webinar --fix  # snap timestamps to real boundaries
 ms render my-webinar --only 01,03
 ms jobs                     # what stage every job is at
+ms install                  # install the Claude Code skill (optional)
 ```
 
 Skip stages you have already paid for: `ms prepare ... --skip transcribe` lets

@@ -36,11 +36,36 @@ repo root** — or point it elsewhere with `--config-dir` / `MS_CONFIG_DIR`.
 ```bash
 .venv/bin/ms caps      # what your ffmpeg can actually do
 .venv/bin/ms jobs      # should print an empty job list
-uv run pytest -q       # 708 tests, ~20s
+uv run pytest -q       # ~720 tests, ~25s
 ```
 
 If `ms caps` prints a caption backend and your layout capabilities, you are
 ready.
+
+## Optional: install the Claude Code skill
+
+The editorial step — choosing which moments are worth cutting and writing
+`clips.json` — is the part a human or an AI performs, not the tool. A skill
+ships with the repo that teaches Claude Code how to do it: how to pick a source
+by counting pixels on the subject, how to write an edit list without inventing
+timestamps, and how to verify framing before rendering a batch.
+
+```bash
+.venv/bin/ms install                # into ~/.claude/skills, available everywhere
+.venv/bin/ms install --dest .claude/skills   # or scope it to one project
+```
+
+| flag | |
+|---|---|
+| `--link` | symlink instead of copying, so edits in this checkout take effect immediately |
+| `--force` | replace an existing installation |
+| `--uninstall` | remove it again |
+
+Claude Code loads skills at startup, so **restart any running session**
+afterwards. This is entirely optional — every `ms` command works without it.
+
+The skill lives in the git repository rather than the Python package, so
+`ms install` needs a clone rather than a wheel. It says so if you try.
 
 ## ffmpeg notes
 
@@ -135,6 +160,7 @@ paying for it twice.
 ## Uninstall
 
 ```bash
+.venv/bin/ms install --uninstall                # the Claude Code skill, if installed
 rm -rf .venv                                    # the environment
 rm -rf ~/.cache/huggingface/hub/models--Systran--faster-distil-whisper-large-v3
 ```

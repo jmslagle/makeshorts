@@ -1,6 +1,7 @@
 """`ms` — the command line. This is the interface a person actually lives in.
 
-Six commands, one per stage of the pipeline, in the order you run them:
+Six commands, one per stage of the pipeline, in the order you run them,
+plus one for installing the companion skill:
 
     ms prepare <input>     mechanical ingest; writes the artifacts and PROMPT.md
     ms plan <slug>         regenerate PROMPT.md from criteria.yaml
@@ -8,6 +9,7 @@ Six commands, one per stage of the pipeline, in the order you run them:
     ms render <slug>       encode the clips
     ms caps                what the installed ffmpeg can actually do
     ms jobs                what state every job is in
+    ms install             install the Claude Code skill (optional)
 
 Two rules shape this module.
 
@@ -1520,6 +1522,117 @@ def _visible_len(text: str) -> int:
 
 def _ljust_visible(text: str, width: int) -> str:
     return text + " " * max(0, width - _visible_len(text))
+
+
+# --------------------------------------------------------------------------
+# ms install
+# --------------------------------------------------------------------------
+
+SKILL_NAME = "makeshorts"
+
+
+def _skill_source() -> Path:
+    """Where the skill lives in this checkout.
+
+    Repo-relative rather than packaged: the skill is one file with one
+    canonical home at `.claude/skills/makeshorts/`, and copying it into the
+    Python package to make it importable would create a second copy to drift.
+    A wheel install therefore has no skill to install, which the caller is told
+    plainly rather than left to guess.
+    """
+    import makeshorts
+
+    root = Path(makeshorts.__file__).resolve().parent.parent
+    return root / ".claude" / "skills" / SKILL_NAME
+
+
+@app.command()
+def install(
+    dest: Annotated[
+        Path | None,
+        typer.Option(
+            "--dest",
+            "-d",
+            metavar="DIR",
+            help="Skills directory to install into. Defaults to ~/.claude/skills "
+            "(available everywhere). Pass a project's .claude/skills to scope it "
+            "to that project.",
+        ),
+    ] = None,
+    link: Annotated[
+        bool,
+        typer.Option(
+            "--link",
+            help="Symlink instead of copying, so edits in this checkout take "
+            "effect immediately. Good while developing the skill; a copy is "
+            "safer if this directory may move.",
+        ),
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Replace an existing installation."),
+    ] = False,
+    uninstall: Annotated[
+        bool,
+        typer.Option("--uninstall", help="Remove a previously installed skill."),
+    ] = False,
+) -> None:
+    """Install the makeshorts skill so Claude Code can drive this pipeline.
+
+    The skill teaches the editorial half of the workflow — choosing a source by
+    counting pixels on the subject, writing clips.json without inventing
+    timestamps, and verifying framing before rendering a batch. Installing it
+    is optional; every `ms` command works without it.
+    """
+    import shutil
+
+    target_dir = Path(dest).expanduser() if dest else Path.home() / ".claude" / "skills"
+    target = target_dir / SKILL_NAME
+
+    if uninstall:
+        if not target.exists() and not target.is_symlink():
+            _out(f"nothing installed at {target}")
+            raise typer.Exit(0)
+        if target.is_symlink():
+            target.unlink()
+        else:
+            shutil.rmtree(target)
+        _out(f"removed {target}")
+        raise typer.Exit(0)
+
+    source = _skill_source()
+    if not (source / "SKILL.md").is_file():
+        _die(
+            f"no skill found at {source}",
+            hint="The skill ships in the git repository, not in the published "
+            "package. Clone https://github.com/jmslagle/makeshorts and run "
+            "`ms install` from there.",
+        )
+
+    if target.exists() or target.is_symlink():
+        if not force:
+            kind = "symlink" if target.is_symlink() else "directory"
+            _die(
+                f"{target} already exists ({kind}).",
+                hint="Re-run with --force to replace it, or --uninstall to remove it.",
+            )
+        if target.is_symlink():
+            target.unlink()
+        else:
+            shutil.rmtree(target)
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    if link:
+        target.symlink_to(source, target_is_directory=True)
+    else:
+        shutil.copytree(source, target)
+
+    _out(f"{_bold('installed')} {SKILL_NAME}  {_dim('→ ' + str(target))}")
+    if link:
+        _out(_dim(f"  symlinked to {source} — edits there take effect immediately"))
+    _out()
+    _out("Claude Code loads skills at startup, so restart any running session.")
+    _out(_dim("  Then ask it to turn a recording into clips, or invoke /makeshorts."))
 
 
 if __name__ == "__main__":  # pragma: no cover

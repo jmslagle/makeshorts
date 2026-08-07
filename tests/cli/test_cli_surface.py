@@ -493,3 +493,51 @@ def test_caps_reports_the_caption_backend(runner, config_dir: Path) -> None:
     assert result.exit_code == 0, _text(result)
     assert "caption_backend" in _text(result)
     assert "has_libass" in _text(result)
+
+
+# -- ms install -------------------------------------------------------------
+
+
+def test_install_copies_the_skill(runner, tmp_path: Path) -> None:
+    dest = tmp_path / "skills"
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(dest)])
+    assert result.exit_code == 0, result.output
+    assert (dest / "makeshorts" / "SKILL.md").is_file()
+
+
+def test_install_refuses_to_clobber_without_force(runner, tmp_path: Path) -> None:
+    """Silently replacing an edited skill would lose work with no warning."""
+    dest = tmp_path / "skills"
+    runner.invoke(cli_mod.app, ["install", "--dest", str(dest)])
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(dest)])
+    assert result.exit_code != 0
+    assert "--force" in result.output
+
+
+def test_install_force_replaces(runner, tmp_path: Path) -> None:
+    dest = tmp_path / "skills"
+    runner.invoke(cli_mod.app, ["install", "--dest", str(dest)])
+    (dest / "makeshorts" / "SKILL.md").write_text("edited")
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(dest), "--force"])
+    assert result.exit_code == 0
+    assert (dest / "makeshorts" / "SKILL.md").read_text() != "edited"
+
+
+def test_install_link_tracks_the_checkout(runner, tmp_path: Path) -> None:
+    dest = tmp_path / "skills"
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(dest), "--link"])
+    assert result.exit_code == 0
+    assert (dest / "makeshorts").is_symlink()
+
+
+def test_uninstall_removes_it(runner, tmp_path: Path) -> None:
+    dest = tmp_path / "skills"
+    runner.invoke(cli_mod.app, ["install", "--dest", str(dest)])
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(dest), "--uninstall"])
+    assert result.exit_code == 0
+    assert not (dest / "makeshorts").exists()
+
+
+def test_uninstall_on_nothing_is_not_an_error(runner, tmp_path: Path) -> None:
+    result = runner.invoke(cli_mod.app, ["install", "--dest", str(tmp_path / "x"), "--uninstall"])
+    assert result.exit_code == 0
