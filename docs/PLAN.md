@@ -230,7 +230,9 @@ makeshorts/
 
   render/
     engine.py               # RenderEngine protocol + registry. Engines register by name.
-    ffmpeg_engine.py        # the only engine today
+    ffmpeg_engine.py        # renders with ffmpeg; the default
+    resolve_engine.py       # builds a DaVinci Resolve timeline per clip; plan is pure
+    resolve_driver.py       # executes that plan via Resolve's scripting API, in a child process
     layout.py               # pure: normalized rects + mode → pixel geometry. Heavily unit-tested.
     caps.py                 # probe installed ffmpeg for libass/drawtext/videotoolbox; cached
     captions/

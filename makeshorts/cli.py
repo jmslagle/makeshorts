@@ -946,8 +946,10 @@ def render(
         typer.Option(
             "--engine",
             metavar="NAME",
-            help="Render backend. ffmpeg is the only one today; the edit list "
-            "is engine-agnostic, so a second one changes nothing upstream.",
+            help="Render backend: `ffmpeg`, or `resolve` to build each clip as a "
+            "DaVinci Resolve timeline and render it there (Resolve Studio must be "
+            "running). The edit list is engine-agnostic, so the choice changes "
+            "nothing upstream.",
         ),
     ] = "ffmpeg",
     force: Annotated[
@@ -981,7 +983,7 @@ def render(
         _dim(
             f"  engine {selected_engine.name} {_engine_version(selected_engine)} · "
             f"{doc.output.width}x{doc.output.height}@{doc.output.fps} · "
-            f"{cfg.render.video.codec} crf {cfg.render.video.crf}"
+            f"{_engine_summary(selected_engine, cfg)}"
         )
     )
     _out()
@@ -1329,6 +1331,7 @@ def _apply_render_config(engine: Any, cfg: config_mod.Config, doc: Any) -> None:
         "loudnorm_lra": audio.normalize.range,
         "fps": doc.output.fps,
         "threads": cfg.render.ffmpeg.threads,
+        "sharpen": cfg.render.sharpen,
     }
     declared = {f.name for f in dataclasses.fields(settings)}
     applied = {k: v for k, v in wanted.items() if k in declared}
@@ -1342,11 +1345,26 @@ def _load_engine_backends() -> None:
     Absence is not an error here — `ms caps` and `ms render` report an empty
     registry themselves, which is a clearer message than an import traceback.
     """
-    for dotted in ("makeshorts.render.ffmpeg_engine",):
+    for dotted in ("makeshorts.render.ffmpeg_engine", "makeshorts.render.resolve_engine"):
         try:
             importlib.import_module(dotted)
         except ImportError:
             continue
+
+
+def _engine_summary(engine: Any, cfg: config_mod.Config) -> str:
+    """One line of encode settings for the render header.
+
+    An engine with its own vocabulary says what it will do; otherwise this is
+    render.yaml's `video:` block, which is what the ffmpeg engine reads.
+    """
+    summary = getattr(engine, "summary", None)
+    if callable(summary):
+        try:
+            return str(summary())
+        except Exception:  # noqa: BLE001 — a header line must not fail the render
+            pass
+    return f"{cfg.render.video.codec} crf {cfg.render.video.crf}"
 
 
 def _engine_version(engine: Any) -> str:

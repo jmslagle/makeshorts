@@ -111,6 +111,11 @@ ms render <slug> --only 01      # one clip first
 ms render <slug>                # then the batch
 ```
 
+If the user wants to finish clips by hand in DaVinci Resolve, render with
+`--engine resolve` instead (Resolve Studio must be running). Each clip becomes
+a timeline named `<slug>--<clip-id>` in the `makeshorts` project, alongside the
+same mp4 the ffmpeg engine would write.
+
 Pull frames and look at them. Check the subject is in frame, captions are
 legible, and any watermark reads against the actual background — a dark logo
 vanishes on a dark camera feed, a white one vanishes on a white slide.

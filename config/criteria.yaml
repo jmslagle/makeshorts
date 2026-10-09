@@ -96,7 +96,7 @@ gates:
 
   # false downgrades a filler opening to a warning. Some connectives genuinely
   # read fine in speech; this is the knob for deciding how strict to be.
-  opening_filler_is_error: true
+  opening_filler_is_error: false
 
 # ── Rubric: what "compelling" means. ────────────────────────────────────────
 # Each criterion is scored 1-5. `anchors` describe what 1, 3 and 5 actually

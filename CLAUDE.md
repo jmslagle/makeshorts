@@ -81,6 +81,31 @@ is what `plan_clip` derived its spans from, so the two lists correspond by
 index. Adding it to `SpanPlan` would put an editorial decision inside a pure
 geometry module.
 
+**Resolve's Transform units are measured, not documented.** With the item's
+Scaling at Crop (1:1, centred), Pan moves `Pan × SW/TW` timeline pixels, Tilt
+moves `−Tilt × SH/TH` (positive is up), and one Crop unit is
+`max(SW/TW, SH/TH)` source pixels — each axis scaled differently, and crop
+differently again. `transform_for` is the inverse; the unit tests check it
+against that forward model, and `tests/render/test_resolve_live.py`
+(`MS_RESOLVE_LIVE=1`) checks the model against Resolve itself. Re-run it after
+a Resolve update.
+
+**Never load Resolve's scripting module into `ms`.** `fusionscript` segfaults
+during interpreter teardown once used, so every batch would end in a crash.
+`resolve_driver.py` runs as a child process, exits via `os._exit` (flushing
+stdout first — `os._exit` drops buffered output), and reports through one JSON
+line rather than its exit status. Keep it stdlib-only and keep decisions out
+of it: everything it does should be decided in `build_plan`, which is pure.
+
+**Fusion's `comp.Lock()` silently drops the comp from the render.** The graph
+reads back correctly wired and the output is unblurred. The backdrop blur
+adds its tools without locking.
+
+**Resolve ignores `endFrame` for a still image**, laying it down at the
+project's default still duration. Timed images (captions, branding, fades)
+are therefore image *sequences* of hard links, one frame per output frame —
+a sequence honours the window it is given.
+
 **Region detection classifies content, not subjects.** It answers "this area is
 a slide, that one is a camera" — it does not locate a face. Framing a speaker
 is an editorial decision expressed as a region rect in `clips.json`.
@@ -88,7 +113,7 @@ is an editorial decision expressed as a region rect in `clips.json`.
 ## Tests
 
 ```bash
-uv run pytest          # ~720 tests, ~25s
+uv run pytest          # ~770 tests, ~20s
 ```
 
 Media fixtures are synthesized with `ffmpeg -f lavfi`, never committed. Region

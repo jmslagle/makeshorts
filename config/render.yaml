@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  render.yaml — everything ffmpeg-shaped.
+#  render.yaml — everything engine-shaped.
 #
 #  This is the file you edit to change HOW clips are encoded. Nothing here
 #  affects WHICH moments get clipped (config/criteria.yaml) or WHAT the edit
@@ -98,6 +98,53 @@ ffmpeg:
   # once a render is working. Bump to `info` when debugging a filtergraph.
   loglevel: warning
 
+# ── DaVinci Resolve ─────────────────────────────────────────────────────────
+# Used only by `ms render --engine resolve`, which builds each clip as a
+# timeline in a running Resolve Studio and renders it there. The layout,
+# captions, branding, transitions, fades and outro above all apply; the
+# `video:` and `ffmpeg:` blocks do not. Audio is loudness-normalised to
+# `audio.normalize.integrated`.
+#
+# Needs Resolve Studio running, with Preferences > System > General >
+# External scripting using: Local.
+resolve:
+  # The project clips are built in, created if missing. Kept separate so
+  # makeshorts' timelines and media never land in something you are editing.
+  # If another project is open, it is saved before Resolve switches away.
+  project: makeshorts
+
+  # Leave each clip's timeline (named <slug>--<clip-id>) in the project after
+  # rendering, to open and finish by hand. The frames it uses live in
+  # out/.resolve/ — delete that and the captions go offline.
+  keep_timelines: true
+
+  # Reopen whatever project was open before each render.
+  restore_project: false
+
+  # Resolve's own names: Project.GetRenderFormats() / GetRenderCodecs().
+  format: mp4
+  codec: H264               # H264 | H265
+  # Bitrate cap in kb/s (0 = automatic). macOS's H.264/H.265 encoders take
+  # only a number; Least | Low | Medium | High | Best suit other codecs.
+  # 20 Mbps: a generous upload target for 1080x1920 YouTube Shorts, so the
+  # detailed (beard, slide text) frames survive YouTube's own re-encode.
+  quality: 20000
+
+  # One of Timeline.GetNormalizeAudioModes().
+  normalize_mode: ITU-R BS.1770-4
+
+  # Seconds to wait for one clip's render before giving up on it.
+  timeout: 1800
+
+# ── Sharpening ──────────────────────────────────────────────────────────────
+# Unsharp-mask amount applied to the composited picture (0 = off). This exists
+# to counter upscaling softness: the face source here is a 720p webcam blown up
+# ~2.7x into a 1080-wide crop, which reads soft. ~1.2 recovers edge detail
+# without haloing; past ~2.0 it looks over-processed. It sharpens the video
+# only -- captions and the watermark are composited crisp on top afterwards.
+# Shared by both engines (ffmpeg `unsharp`, Resolve Fusion sharpen).
+sharpen: 1.2
+
 captions:
   # Which caption renderer to use. `auto` probes the installed ffmpeg: it picks
   # the `subtitles` filter when the binary was built with libass, and falls
@@ -147,9 +194,27 @@ captions:
 # Pick the variant that suits the footage: a dark-on-light mark disappears over
 # a dark camera feed, and a white mark disappears over a white slide.
 
-default_branding:
+default_branding: cnwr
 
-branding: {}
+branding:
+  # Standard mark: navy "cnwr" + black brackets. Reads on light backgrounds
+  # (slides); fades on a dark camera feed.
+  cnwr:
+    enabled: true
+    image: assets/cnwr-logo.png   # transparent PNG, resolved from the dir ms runs in; assets/ is gitignored
+    corner: top_right
+    scale: 0.22                   # wide 3.25:1 mark -> ~237px across at 1080
+    opacity: 0.9
+    margin: 0.04
+  # Reversed mark: white "cnwr" + cyan brackets. For dark footage. Name it on a
+  # clip -- "branding": "cnwr-dark" -- for shots over a dark camera background.
+  cnwr-dark:
+    enabled: true
+    image: assets/cnwr-logo-dark.png
+    corner: top_right
+    scale: 0.22
+    opacity: 0.9
+    margin: 0.04
 
 # ── Layout geometry ─────────────────────────────────────────────────────────
 # Presentation policy shared by every render engine: how strong the backdrop

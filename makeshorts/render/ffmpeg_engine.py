@@ -43,10 +43,11 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 from makeshorts.render import layout as L
 from makeshorts.render.caps import probe_caps
@@ -61,6 +62,7 @@ from makeshorts.render.engine import (
     Receipt,
     register,
 )
+from .sources import resolve_source_paths
 from makeshorts.select.schema import Clip, ClipsDoc
 
 # Beyond this many PNG overlays in one filtergraph, ffmpeg's graph gets
@@ -91,6 +93,9 @@ class EncodeSettings:
     audio_bitrate: str = "160k"
     loudnorm_i: float = -14.0  # LUFS; the usual target for social platforms
     fps: int = 30
+    # Unsharp-mask amount for the composited video (0 = off). Applied in the
+    # layout stage, so captions and branding overlaid later stay crisp.
+    sharpen: float = 0.0
 
     @property
     def video_args(self) -> list[str]:
@@ -214,7 +219,11 @@ class FFmpegEngine:
             parts.append(f"[{current}][l{i}]overlay=x={d.x}:y={d.y}:shortest=0[{nxt}]")
             current = nxt
 
-        parts.append(f"[{current}]format={self.settings.pix_fmt}[vout]")
+        # Sharpen the upscaled composite before captions/branding are overlaid
+        # (those are already crisp and should not be sharpened).
+        sharp = (f"unsharp=5:5:{self.settings.sharpen:.3f}:5:5:0.0,"
+                 if self.settings.sharpen > 0 else "")
+        parts.append(f"[{current}]{sharp}format={self.settings.pix_fmt}[vout]")
         return ";".join(parts)
 
     def _render_span(self, sources: Mapping[str, Path],
@@ -403,45 +412,9 @@ class FFmpegEngine:
     # -- inputs ------------------------------------------------------------
 
     def _resolve_source_paths(self, doc: ClipsDoc, source: Path) -> dict[str, Path]:
-        """Source name -> a file that exists on disk.
-
-        One source is the overwhelmingly common case and is answered without
-        touching the filesystem: the caller's path wins outright, which keeps
-        every existing single-source caller working unchanged.
-
-        With several, `SourceSpec.path` is what we have, and it is written the
-        way a human writes it in `clips.json` -- usually relative to the repo
-        root (`jobs/<slug>/screen.mp4`), sometimes just a filename sitting next
-        to the primary source. So each is tried against the primary source's
-        directory, then each directory above it, then the cwd.
-        """
-        specs = doc.resolved_sources()
-        primary = doc.primary_source_name
-        if len(specs) == 1:
-            return {primary: source}
-
-        roots = _search_roots(source)
-        paths: dict[str, Path] = {}
-        missing: list[str] = []
-        for name, spec in specs.items():
-            found = _first_existing(Path(spec.path), roots)
-            if found is None and name == primary and source.exists():
-                # The edit list may name the primary file something the job
-                # directory does not; the caller handed us the real one.
-                found = source
-            if found is None:
-                missing.append(f"{name!r} -> {spec.path!r}")
-            else:
-                paths[name] = found.resolve()
-        if missing:
-            where = "\n  ".join(str(r) for r in roots)
-            raise FileNotFoundError(
-                "cannot find source file(s) named by the edit list: "
-                + ", ".join(missing)
-                + f"\nlooked (relative paths only) in:\n  {where}"
-            )
-        return paths
-
+        """Source name -> a file that exists on disk. Shared with every other
+        engine; see `render/sources.py`."""
+        return resolve_source_paths(doc, source)
 
     # -- transitions, edge fades, outro -----------------------------------
 
@@ -620,32 +593,6 @@ class FFmpegEngine:
             duration=_probe_duration(self.ffprobe, out),
             commands=commands,
         )
-
-
-def _unique(names: Iterable[str]) -> list[str]:
-    """Deduplicate, preserving first-use order."""
-    out: list[str] = []
-    for n in names:
-        if n not in out:
-            out.append(n)
-    return out
-
-
-def _search_roots(source: Path) -> list[Path]:
-    """Directories a relative source path is tried against, nearest first."""
-    base = source.parent if source.parent != Path("") else Path.cwd()
-    roots = [base, *base.parents, Path.cwd()]
-    return [Path(p) for p in _unique(str(p) for p in roots)]
-
-
-def _first_existing(path: Path, roots: list[Path]) -> Path | None:
-    if path.is_absolute():
-        return path if path.exists() else None
-    for root in roots:
-        candidate = root / path
-        if candidate.exists():
-            return candidate
-    return None
 
 
 def _attr(obj, *names):
