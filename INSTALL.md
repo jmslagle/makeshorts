@@ -7,6 +7,7 @@
 | Python | 3.12 or newer |
 | [uv](https://docs.astral.sh/uv/) | package + venv manager |
 | ffmpeg / ffprobe | any recent build — see [ffmpeg notes](#ffmpeg-notes) |
+| DaVinci Resolve Studio | optional, only for `--engine resolve` — see [Resolve](#davinci-resolve) |
 | Disk | ~1.5 GB for the Whisper model, plus room for jobs (a 1-hour job is ~300 MB before renders) |
 
 No GPU is required. No paid or licensed dependency is used anywhere.
@@ -36,7 +37,7 @@ repo root** — or point it elsewhere with `--config-dir` / `MS_CONFIG_DIR`.
 ```bash
 .venv/bin/ms caps      # what your ffmpeg can actually do
 .venv/bin/ms jobs      # should print an empty job list
-uv run pytest -q       # ~720 tests, ~25s
+uv run pytest -q       # ~770 tests, ~20s
 ```
 
 If `ms caps` prints a caption backend and your layout capabilities, you are
@@ -141,6 +142,35 @@ Caption styles reference a font path. The shipped styles use macOS system
 fonts; on Linux or Windows, point `font` in `config/styles.yaml` at a font you
 have — any TTF/OTF works, since Pillow does its own text rendering.
 
+## DaVinci Resolve
+
+Optional. `ms render <slug> --engine resolve` builds each clip as a timeline in
+Resolve and renders it there, so you can open the edit and keep working on it.
+It needs:
+
+- **Resolve Studio** (the free edition does not allow external scripting),
+  **running** while you render.
+- **Preferences > System > General > External scripting using: Local.**
+- Its scripting module in the default place. If Resolve is installed
+  elsewhere, set `RESOLVE_SCRIPT_API` to its `Developer/Scripting` directory.
+
+`ms caps` lists the `resolve` engine with Resolve's version when it can reach
+it. Settings live under `resolve:` in `config/render.yaml`: the project the
+timelines go in (`makeshorts` by default, so they stay out of your own work),
+whether to keep them, and the codec. If another project is open when a render
+starts, Resolve saves it before switching away.
+
+Each kept timeline reads frames from `out/.resolve/<clip>/`; delete that
+folder and its captions go offline in Resolve. The rendered files are
+unaffected.
+
+To check Resolve still agrees with the geometry (worth doing after a Resolve
+update — the units involved are undocumented):
+
+```bash
+MS_RESOLVE_LIVE=1 uv run pytest tests/render/test_resolve_live.py
+```
+
 ## Troubleshooting
 
 **`error: config file not found: config/render.yaml`** — you are not in the
@@ -152,6 +182,10 @@ ones. Nothing renders until lint passes, by design.
 
 **A render seems to hang** — check `ms caps` first. If you are on a build with
 unusual filter support, run with a single clip (`--only 01`) to isolate it.
+
+**`could not reach DaVinci Resolve`** — start Resolve, and check that
+external scripting is set to Local (above). The setting applies after a
+restart of Resolve.
 
 **Transcription is slower than expected** — it is CPU-bound and single-job.
 `--model medium` trades some accuracy for speed; `--skip transcribe` avoids

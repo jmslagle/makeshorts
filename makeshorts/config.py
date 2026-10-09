@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import Annotated, Any, Literal, Mapping
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -357,11 +357,48 @@ class OutroConfig(Strict):
     max_duration: float | None = Field(default=None, gt=0.0)
 
 
+ResolveQuality = Literal["Least", "Low", "Medium", "High", "Best"]
+
+
+class ResolveConfig(Strict):
+    """Settings for `ms render --engine resolve`.
+
+    Resolve's own vocabulary, in the same way `ffmpeg:` and `video:` hold
+    ffmpeg's. Nothing here reaches clips.json.
+    """
+
+    # The Resolve project each clip's timeline is built in. Created if absent.
+    # A dedicated project keeps makeshorts' timelines and media out of
+    # whatever you were editing.
+    project: str = "makeshorts"
+    # Leave each clip's timeline in the project after rendering, so it can be
+    # opened and finished by hand. False deletes it once the file is written.
+    keep_timelines: bool = True
+    # Reopen whichever project was open before the render. Off by default:
+    # the timelines are usually what you want to look at next.
+    restore_project: bool = False
+    # Resolve's render format and codec names (`Project.GetRenderFormats()`,
+    # `GetRenderCodecs(format)`), not ffmpeg's.
+    format: str = "mp4"
+    codec: str = "H264"
+    # Resolve's `VideoQuality`: a bitrate cap in kb/s, or 0 for automatic.
+    # The H.264/H.265 encoders on macOS accept only numbers; the named levels
+    # are for codecs that have them, and Resolve refuses them elsewhere.
+    quality: Annotated[int, Field(ge=0)] | ResolveQuality = 12000
+    # One of `Timeline.GetNormalizeAudioModes()`. BS.1770-4 is the loudness
+    # measure LUFS targets are defined against; the target itself is
+    # `audio.normalize.integrated`, shared with the ffmpeg engine.
+    normalize_mode: str = "ITU-R BS.1770-4"
+    # Seconds to wait for one clip's render before giving up on it.
+    timeout: float = Field(default=1800.0, gt=0.0)
+
+
 class RenderConfig(Strict):
     video: VideoConfig = Field(default_factory=VideoConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     ffmpeg: FfmpegConfig = Field(default_factory=FfmpegConfig)
+    resolve: ResolveConfig = Field(default_factory=ResolveConfig)
     captions: CaptionsConfig = Field(default_factory=CaptionsConfig)
     # Preset name -> settings. `clips.json` may name one, or "none".
     branding: dict[str, BrandingConfig] = Field(default_factory=dict)
@@ -375,6 +412,13 @@ class RenderConfig(Strict):
     fade: FadeConfig = Field(default_factory=FadeConfig)
     outro: dict[str, OutroConfig] = Field(default_factory=dict)
     default_outro: str | None = None
+    # Unsharp-mask amount applied to the composited video (0 = off). Counters
+    # the upscaling softness of a low-res source (a 720p webcam blown up to
+    # 1080). Shared by every engine: ffmpeg applies it as an `unsharp` filter,
+    # Resolve as a Fusion sharpen. ~1.2 recovers edge detail without haloing;
+    # much past 2.0 looks over-processed. It sharpens the picture, not the
+    # captions or the watermark, which are composited crisp on top of it.
+    sharpen: float = Field(default=0.0, ge=0.0, le=5.0)
 
 
 # --------------------------------------------------------------------------

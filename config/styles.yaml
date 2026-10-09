@@ -45,11 +45,14 @@ styles:
   # guarantees contrast over any video behind it, and the moving highlight gives
   # the eye something to track, so the text gets read rather than skimmed.
   pill-karaoke:
-    font_file: /System/Library/Fonts/Supplemental/Arial Bold.ttf
+    # CNWR house font. Open Sans ExtraBold reads bold and clean at thumbnail
+    # size; the brand's other face, Dosis, is a display font better suited to
+    # titles than running captions.
+    font_file: /Users/jslagle/Library/Fonts/OpenSans-ExtraBold.ttf
     # libass resolves fonts by family name, not path, so a style carries both.
     # Only the Pillow backend is usable on this machine, but the ASS path must
     # not silently render in the wrong face if a libass build shows up.
-    font_family: Arial Bold
+    font_family: Open Sans
     # 0.042 x 1920 ≈ 81px. Big enough to read at thumbnail size; small enough
     # that two lines of 26 characters still clear the safe area.
     font_size_pct: 0.042
@@ -66,8 +69,9 @@ styles:
     shadow_offset_pct: 0.0022
 
     karaoke: true
-    # Amber on white reads as "this word, now" without a second shape to draw.
-    highlight_fill: "#FFD400"
+    # CNWR Cool Blue (brand cyan, #00ADEE) on white reads as "this word, now"
+    # and matches the logo's cyan brackets.
+    highlight_fill: "#00ADEE"
     # Fully transparent: no chip behind the active word in this style.
     highlight_pill: "#00000000"
 

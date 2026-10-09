@@ -23,12 +23,18 @@ transcription**.
 
 ## Why it is built this way
 
-**The edit list is engine-agnostic.** ffmpeg is today's renderer, not a concept
-`clips.json` knows about. No codec, bitrate, preset, filter string, pixel crop,
-font path or output directory appears anywhere in it. Times are absolute
-seconds; geometry is normalized 0–1; styles and branding are *names* resolved at
-render time. A second engine implements the `RenderEngine` protocol, registers a
-name, and `ms render --engine X` selects it — with the same edit list.
+**The edit list is engine-agnostic.** No codec, bitrate, preset, filter string,
+pixel crop, font path or output directory appears anywhere in `clips.json`.
+Times are absolute seconds; geometry is normalized 0–1; styles and branding are
+*names* resolved at render time. Two engines render the same edit list:
+
+- `ffmpeg` (default) — encodes the file directly.
+- `resolve` — builds each clip as a timeline in a running **DaVinci Resolve
+  Studio**, renders it there, and leaves the timeline in a `makeshorts` project
+  to open and finish by hand. `ms render <slug> --engine resolve`.
+
+An engine implements the `RenderEngine` protocol and registers a name, and
+`ms render --engine X` selects it.
 
 Two tests enforce this rather than trusting it: one greps `select/` and
 `prepare/` for ffmpeg vocabulary, the other walks a fully-populated `clips.json`
@@ -149,7 +155,7 @@ you re-run region detection without transcribing an hour of audio again.
 | file | holds |
 |---|---|
 | `config/criteria.yaml` | the rubric — what "compelling" means, gates, vetoes, diversity |
-| `config/render.yaml` | codecs, crf, loudness, branding presets — everything ffmpeg-shaped |
+| `config/render.yaml` | codecs, crf, loudness, branding, transitions, the `resolve:` engine — everything engine-shaped |
 | `config/styles.yaml` | caption styles: font, size, colours, pill, safe area |
 
 ## Layout
@@ -162,6 +168,9 @@ makeshorts/
   render/               layout geometry, caps probing, captions, engines
     engine.py           the RenderEngine protocol — the swappability contract
     layout.py           pure geometry, shared by every engine
+    ffmpeg_engine.py    renders with ffmpeg
+    resolve_engine.py   renders in DaVinci Resolve: plans the timeline, purely
+    resolve_driver.py   the only code that calls Resolve's API, in a child process
 ```
 
 `select/` and `prepare/` never import `render/`.

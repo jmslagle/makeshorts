@@ -37,3 +37,4 @@ tests/render/_samples/*.png
 
 # macOS
 .DS_Store
+content

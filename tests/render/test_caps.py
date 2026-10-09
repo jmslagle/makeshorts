@@ -218,7 +218,7 @@ def test_probe_reports_this_machine_correctly():
     output before anyone trusts it.
     """
     c = probe_caps(use_cache=False)
-    assert c.ffmpeg_version.startswith("8.")
+    assert c.ffmpeg_version.startswith("9.")
     assert c.has_overlay, "overlay is the one filter the Pillow path cannot do without"
     assert c.filters["crop"] and c.filters["scale"]
     assert c.blur_filter is not None
